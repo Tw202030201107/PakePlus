@@ -1,0 +1,2640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>岷县二中高三级第二级部巡课记录系统 ·</title>
+    <!-- 强制使用 HTTPS 且添加 integrity 校验，保障库加载稳定性 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+    </script>
+    <style>
+        /* ===== 全局重置 & 基础 ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background: #f5f7fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft Yahei", sans-serif;
+            padding: 12px 10px 76px;
+            color: #1e293b;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            padding: 16px 12px 20px;
+        }
+        .app-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eef2f6;
+            margin-bottom: 16px;
+        }
+        .app-title small {
+            font-size: 12px;
+            font-weight: 400;
+            color: #94a3b8;
+            display: block;
+            margin-top: 2px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 14px 12px;
+            margin-bottom: 14px;
+            border: 1px solid #eef2f6;
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2563eb;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eef2f6;
+            margin-bottom: 12px;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+
+        /* ===== 底部导航 ===== */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: #ffffff;
+            border-top: 1px solid #eef2f6;
+            display: flex;
+            padding: 4px 0 env(safe-area-inset-bottom, 0);
+            height: 64px;
+            align-items: center;
+            justify-content: space-around;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 11px;
+            gap: 2px;
+            cursor: pointer;
+            padding: 6px 0;
+            border-radius: 8px;
+            transition: 0.15s;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tab-item .tab-icon {
+            font-size: 22px;
+        }
+        .tab-item.active {
+            color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        /* ===== 录入表格 ===== */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 8px;
+        }
+        .form-item {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+        .form-item label {
+            display: block;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        .form-item input,
+        .form-item select {
+            width: 100%;
+            padding: 10px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #fff;
+            transition: 0.15s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .form-item input:focus,
+        .form-item select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.10);
+        }
+        .form-item input.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+        .form-item.full {
+            grid-column: 1 / -1;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -6px;
+            padding: 0 6px;
+        }
+        .class-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            border-radius: 10px;
+            overflow: hidden;
+            min-width: 300px;
+        }
+        .class-table th,
+        .class-table td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 4px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .class-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .class-table td.teacher-cell {
+            position: relative;
+            padding: 4px;
+            min-width: 100px;
+        }
+        .class-table td.teacher-cell input {
+            width: 100%;
+            padding: 8px 6px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fff;
+            transition: 0.15s;
+        }
+        .class-table td.teacher-cell input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.10);
+        }
+        .class-table td.teacher-cell input.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+        .class-table td.note-cell select {
+            width: 100%;
+            padding: 8px 4px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fff;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .teacher-input-wrap {
+            position: relative;
+            width: 100%;
+        }
+        .autocomplete-list {
+            position: absolute;
+            top: calc(100% + 2px);
+            left: 4px;
+            right: 4px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            max-height: 160px;
+            overflow-y: auto;
+            z-index: 50;
+            display: none;
+            list-style: none;
+            padding: 4px 0;
+            margin: 0;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.10);
+        }
+        .autocomplete-list.show {
+            display: block;
+        }
+        .autocomplete-list li {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #1e293b;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .autocomplete-list li:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-list li:hover,
+        .autocomplete-list li.active {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        .autocomplete-list li .highlight {
+            font-weight: 700;
+            color: #2563eb;
+        }
+        .autocomplete-list .no-match {
+            color: #94a3b8;
+            text-align: center;
+            cursor: default;
+            padding: 12px 14px;
+        }
+
+        /* ===== 按钮 ===== */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn-row button {
+            flex: 1;
+            min-width: 70px;
+        }
+        button {
+            padding: 14px 12px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: 0.15s;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button:active {
+            transform: scale(0.97);
+        }
+        button:disabled {
+            opacity: 0.5;
+            transform: none !important;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+        }
+        .btn-primary:active {
+            background: #1d4ed8;
+        }
+        .btn-success {
+            background: #059669;
+            color: #fff;
+        }
+        .btn-success:active {
+            background: #047857;
+        }
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+        }
+        .btn-danger:active {
+            background: #b91c1c;
+        }
+        .btn-warning {
+            background: #f59e0b;
+            color: #fff;
+        }
+        .btn-warning:active {
+            background: #d97706;
+        }
+        .btn-purple {
+            background: #8b5cf6;
+            color: #fff;
+        }
+        .btn-purple:active {
+            background: #7c3aed;
+        }
+        .btn-gray {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .btn-sm {
+            padding: 10px 12px;
+            font-size: 13px;
+        }
+
+        /* ===== 筛选栏 ===== */
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+            padding: 8px 10px;
+            background: #f8fafc;
+            border-radius: 10px;
+            align-items: center;
+        }
+        .filter-bar input,
+        .filter-bar select {
+            flex: 1;
+            min-width: 80px;
+            padding: 8px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            background: #fff;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .filter-bar button {
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        /* ===== 统计 ===== */
+        .stats-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+            justify-content: center;
+            padding: 10px 12px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .stats-bar span {
+            color: #64748b;
+        }
+        .stats-bar strong {
+            color: #0f172a;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            border-radius: 10px;
+            overflow: hidden;
+            min-width: 560px;
+        }
+        .data-table th,
+        .data-table td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 4px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .data-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .data-table .empty-row td {
+            padding: 24px 10px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        .del-btn,
+        .edit-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            margin: 2px;
+            touch-action: manipulation;
+        }
+        .del-btn {
+            background: #dc2626;
+            color: #fff;
+        }
+        .del-btn:active {
+            background: #b91c1c;
+        }
+        .edit-btn {
+            background: #2563eb;
+            color: #fff;
+        }
+        .edit-btn:active {
+            background: #1d4ed8;
+        }
+        .class-row td {
+            background: #fffbeb !important;
+            font-size: 12px;
+            color: #991b1b;
+        }
+        .total-cell {
+            color: #dc2626;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        /* ===== 折叠面板 ===== */
+        .collapse-panel {
+            border: 1px solid #eef2f6;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .collapse-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 14px;
+            background: #f8fafc;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 500;
+            font-size: 15px;
+            color: #0f172a;
+            transition: background 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .collapse-header:hover {
+            background: #eef2f6;
+        }
+        .collapse-header .arrow {
+            transition: transform 0.25s;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+        .collapse-header .arrow.open {
+            transform: rotate(90deg);
+        }
+        .collapse-body {
+            padding: 12px 14px;
+            background: #ffffff;
+            display: none;
+        }
+        .collapse-body.open {
+            display: block;
+        }
+
+        /* ===== 管理面板 ===== */
+        .mgmt-search {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #f8fafc;
+            margin-bottom: 10px;
+            transition: 0.15s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .mgmt-search:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.10);
+        }
+        .mgmt-list {
+            max-height: 220px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            border: 1px solid #eef2f6;
+            border-radius: 8px;
+            padding: 4px 0;
+        }
+        .mgmt-list .empty-hint {
+            color: #94a3b8;
+            text-align: center;
+            padding: 16px 0;
+            font-size: 14px;
+        }
+        .mgmt-add-area {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .mgmt-add-area input,
+        .mgmt-add-area select {
+            flex: 1;
+            min-width: 100px;
+            padding: 10px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #fff;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .mgmt-add-area button {
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+        .mgmt-add-area .teacher-input-wrap {
+            flex: 1;
+            min-width: 120px;
+            position: relative;
+        }
+        .mgmt-add-area .teacher-input-wrap input {
+            width: 100%;
+            padding: 10px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #fff;
+        }
+        .mgmt-add-area .teacher-input-wrap .autocomplete-list {
+            top: calc(100% + 2px);
+            left: 0;
+            right: 0;
+            max-height: 140px;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            background: #f8fafc;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        .list-item .remove-btn {
+            background: #dc2626;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            touch-action: manipulation;
+        }
+        .list-item .remove-btn:active {
+            background: #b91c1c;
+        }
+        .list-item .tag {
+            background: #e2e8f0;
+            border-radius: 4px;
+            padding: 0 8px;
+            font-size: 12px;
+            color: #475569;
+            margin-left: 6px;
+        }
+
+        /* ===== 切换开关 ===== */
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1e293b;
+            cursor: pointer;
+        }
+        .toggle-label input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            accent-color: #2563eb;
+        }
+        .backup-status {
+            margin-top: 6px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        /* ===== 模态框 ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-box {
+            background: #fff;
+            max-width: 400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 16px;
+            padding: 24px 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+        .modal-box h3 {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #0f172a;
+        }
+        .modal-box .field {
+            margin-bottom: 14px;
+        }
+        .modal-box .field label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 4px;
+        }
+        .modal-box .field input,
+        .modal-box .field select {
+            width: 100%;
+            padding: 12px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #fff;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .modal-box .btn-row {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+        }
+        .modal-box .btn-row button {
+            flex: 1;
+        }
+
+        /* ===== Toast ===== */
+        .toast-wrap {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+            width: 90%;
+            max-width: 400px;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: center;
+        }
+        .toast-item {
+            pointer-events: auto;
+            padding: 14px 20px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+            width: 100%;
+            text-align: center;
+            animation: fadeDown 0.25s ease;
+        }
+        .toast-success {
+            background: #059669;
+        }
+        .toast-error {
+            background: #dc2626;
+        }
+        .toast-warning {
+            background: #f59e0b;
+        }
+        .toast-info {
+            background: #2563eb;
+        }
+        @keyframes fadeDown {
+            from {
+                opacity: 0;
+                transform: translateY(-16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .toast-item.hide {
+            animation: fadeUp 0.25s ease forwards;
+        }
+        @keyframes fadeUp {
+            to {
+                opacity: 0;
+                transform: translateY(-16px);
+            }
+        }
+
+        /* ===== 版本标签 ===== */
+        .version-tag {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 14px;
+            opacity: 0.6;
+        }
+
+        /* ===== 响应式微调 ===== */
+        @media (max-width: 420px) {
+            .app-container {
+                padding: 12px 8px 16px;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            .class-table {
+                font-size: 13px;
+                min-width: 260px;
+            }
+            .class-table td.teacher-cell {
+                min-width: 80px;
+            }
+            .btn-row {
+                flex-direction: column;
+            }
+            .btn-row button {
+                min-width: unset;
+            }
+            .data-table {
+                font-size: 12px;
+                min-width: 440px;
+            }
+            .filter-bar input,
+            .filter-bar select {
+                min-width: 70px;
+                font-size: 13px;
+            }
+            .tab-bar {
+                height: 60px;
+            }
+            .tab-item {
+                font-size: 10px;
+            }
+            .tab-item .tab-icon {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast-wrap" id="toastWrap"></div>
+
+    <div class="app-container" id="app">
+
+        <div class="app-title">
+            高三级第二级部巡课记录系统
+            <small>岷县二中</small>
+        </div>
+
+        <!-- ===== 主内容（直接显示，无登录） ===== -->
+        <div id="mainContent">
+
+            <!-- ========== 录入页 ========== -->
+            <div class="page active" id="page1">
+                <div class="card">
+                    <div class="card-title">📝 填写巡课信息</div>
+                    <div class="form-grid">
+                        <div class="form-item">
+                            <label>日期</label>
+                            <input type="date" id="date" />
+                        </div>
+                        <div class="form-item">
+                            <label>周数</label>
+                            <input type="number" id="weekNum" placeholder="周数" min="1" max="30" />
+                        </div>
+                        <div class="form-item full">
+                            <label>节次</label>
+                            <select id="jieci">
+                                <option>早读</option><option>上午第一节课</option><option>上午第二节课</option>
+                                <option>上午第三节课</option><option>上午第四节课</option><option>上午第五节课</option>
+                                <option>午休</option><option>下午第一节课</option><option>下午第二节课</option>
+                                <option>下午第三节课</option><option>下午自习</option><option>晚自习</option>
+                            </select>
+                        </div>
+                        <div class="form-item full">
+                            <label>巡课教师</label>
+                            <input id="xunkeTeacher" placeholder="输入姓名或拼音首字母" maxlength="20" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🏫 各班巡课明细</div>
+                    <div class="table-wrap">
+                        <table class="class-table" id="classTable">
+                            <thead><tr><th>班级</th><th>授课教师</th><th>巡课情况</th></tr></thead>
+                            <tbody id="classBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn-primary" id="saveBtn">💾 保存当前班级巡课记录</button>
+                        <div class="btn-row">
+                            <button class="btn-success" id="exportExcelBtn">📊 导出全部Excel（明细+汇总）</button>
+                            <button class="btn-warning" id="backupBtn">📁 手动备份（含教师/班级名单）</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== 统计页 ========== -->
+            <div class="page" id="page2">
+                <div class="card">
+                    <div class="card-title">📊 巡课台账</div>
+                    <div class="filter-bar">
+                        <input type="date" id="filterDateStart" placeholder="起始日期" />
+                        <input type="date" id="filterDateEnd" placeholder="结束日期" />
+                        <input type="text" id="filterTeacher" placeholder="授课教师" />
+                        <select id="filterBanji"><option value="">全部班级</option></select>
+                        <select id="filterJieci"><option value="">全部节次</option></select>
+                        <button class="btn-primary btn-sm" id="filterBtn">筛选</button>
+                        <button class="btn-gray btn-sm" id="resetFilterBtn">重置</button>
+                    </div>
+                    <div class="stats-bar">
+                        <span>📋 记录数：<strong id="totalRecords">0</strong></span>
+                        <span>👨‍🏫 教师：<strong id="totalTeachers">0</strong></span>
+                        <span>📅 日期：<strong id="totalDays">0</strong></span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="historyTable">
+                            <thead><tr><th>序号</th><th>日期</th><th>周数</th><th>节次</th><th>班级</th><th>授课教师</th><th>巡课教师</th><th>巡课情况</th><th>操作</th></tr></thead>
+                            <tbody id="historyBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card" style="background:#eff6ff;">
+                    <div class="card-title">📈 教师课时汇总（含上课班级）</div>
+                    <div class="table-wrap" id="summaryWrap"></div>
+                </div>
+
+                <div class="card" style="background:#fefce8;">
+                    <div class="card-title">⚠️ 巡课异常汇总（非正常记录）</div>
+                    <div class="table-wrap" id="abnormalWrap"></div>
+                </div>
+            </div>
+
+            <!-- ========== 设置页 ========== -->
+            <div class="page" id="page3">
+                <div class="card">
+                    <div class="card-title">⚙️ 数据备份与恢复</div>
+                    <div class="field" style="margin-bottom:16px;">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="autoBackupCheck" /> 开启自动备份（每5分钟自动保存）
+                        </label>
+                        <div class="backup-status" id="autoBackupStatus">当前状态：已关闭</div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn-warning" id="manualBackupBtn">📁 备份全量数据（含教师/班级名单）</button>
+                        <button class="btn-success" id="exportAllBtn">📊 导出明细+汇总Excel</button>
+                        <button class="btn-purple" id="restoreBtn">📂 从JSON文件恢复数据</button>
+                        <button class="btn-danger" id="clearBtn">🗑️ 清空所有数据（谨慎）</button>
+                        <button class="btn-gray" id="openFolderBtn">📂 打开存储路径（下载文件夹）</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">⚙️ 教师与班级管理</div>
+
+                    <!-- 教师折叠面板 -->
+                    <div class="collapse-panel">
+                        <div class="collapse-header" data-target="teacherCollapse">
+                            <span>📚 教师名单</span>
+                            <span class="arrow" id="teacherArrow">▶</span>
+                        </div>
+                        <div class="collapse-body" id="teacherCollapse">
+                            <input class="mgmt-search" id="teacherSearch" placeholder="🔍 搜索教师..." />
+                            <div class="mgmt-list" id="teacherListContainer"></div>
+                            <div class="mgmt-add-area">
+                                <div class="teacher-input-wrap" id="teacherAddWrap">
+                                    <input type="text" id="newTeacherInput" placeholder="输入姓名或拼音首字母，点击候选直接添加" />
+                                    <ul class="autocomplete-list" id="teacherAddAutocomplete"></ul>
+                                </div>
+                                <button class="btn-primary btn-sm" id="addTeacherBtn">添加</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 班级折叠面板 -->
+                    <div class="collapse-panel">
+                        <div class="collapse-header" data-target="classCollapse">
+                            <span>🏫 班级名单（含级部）</span>
+                            <span class="arrow" id="classArrow">▶</span>
+                        </div>
+                        <div class="collapse-body" id="classCollapse">
+                            <input class="mgmt-search" id="classSearch" placeholder="🔍 搜索班级..." />
+                            <div class="mgmt-list" id="classListContainer"></div>
+                            <div class="mgmt-add-area">
+                                <input type="text" id="newClassInput" placeholder="班级名称，如 高三(2)班" />
+                                <input type="text" id="newClassGroup" placeholder="级部名称，如 高三2级部" />
+                                <button class="btn-primary btn-sm" id="addClassBtn">添加</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="version-tag">版本 v4.1 · 兼容 App</div>
+                </div>
+            </div>
+
+            <!-- ===== 底部导航 ===== -->
+            <div class="tab-bar" id="tabBar">
+                <button class="tab-item active" data-page="page1">
+                    <span class="tab-icon">📝</span>
+                    <span>录入</span>
+                </button>
+                <button class="tab-item" data-page="page2">
+                    <span class="tab-icon">📊</span>
+                    <span>统计</span>
+                </button>
+                <button class="tab-item" data-page="page3">
+                    <span class="tab-icon">⚙️</span>
+                    <span>设置</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 编辑模态框 ===== -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-box">
+            <h3>✏️ 编辑记录</h3>
+            <div class="field"><label>日期</label><input type="date" id="editDate" /></div>
+            <div class="field"><label>周数</label><input type="number" id="editWeekNum" /></div>
+            <div class="field"><label>节次</label><select id="editJieci"><option>早读</option><option>上午第一节课</option><option>上午第二节课</option><option>上午第三节课</option><option>上午第四节课</option><option>上午第五节课</option><option>午休</option><option>下午第一节课</option><option>下午第二节课</option><option>下午第三节课</option><option>下午自习</option><option>晚自习</option></select></div>
+            <div class="field"><label>班级</label><input type="text" id="editBanji" readonly style="background:#f1f5f9;" /></div>
+            <div class="field"><label>授课教师</label><input type="text" id="editTeacher" /></div>
+            <div class="field"><label>巡课教师</label><input type="text" id="editXunke" /></div>
+            <div class="field"><label>巡课情况</label><select id="editRemark"><option>正常</option><option>迟到</option><option>缺课</option><option>请假</option></select></div>
+            <div class="btn-row"><button class="btn-primary" id="saveEditBtn">保存</button><button class="btn-gray" id="cancelEditBtn">取消</button></div>
+        </div>
+    </div>
+
+    <input type="file" id="restoreFileInput" accept=".json" style="display:none;" />
+
+    <script>
+        // ================================================================
+        //  巡课系统 —— App 兼容版 v4.1
+        //  核心功能不变，增加 XLSX 库加载失败时的友好提示
+        //  并优化 App 环境下的下载兼容性
+        // ================================================================
+
+        // ---------- 常量 ----------
+        const STORAGE_KEY = 'xunkeDataList_v2';
+        const VERSION_KEY = 'app_version';
+        const APP_VERSION = '4.1.0';
+        const DRAFT_KEY = 'xunkeDraft_v2';
+        const TEACHER_LIST_KEY = 'teacherList_v2';
+        const CLASS_LIST_KEY = 'classList_v2';
+
+        const ALL_JIECI = ['早读', '上午第一节课', '上午第二节课', '上午第三节课', '上午第四节课', '上午第五节课', '午休', '下午第一节课', '下午第二节课', '下午第三节课',
+            '下午自习', '晚自习'
+        ];
+
+        // ---------- 默认数据 ----------
+        const DEFAULT_TEACHERS = [
+            '周军花', '谢君', '安东明', '包丽娟', '邓斌', '邓美',
+            '高菲菲', '黄朝霞', '郎翠琴', '李惠洁', '李林', '李亚辉',
+            '马锦彪', '宁秀娟', '蒲雪', '任凤娇', '任小伟', '孙礼心玉',
+            '孙晓霞', '万德克', '王丽', '王巧秀', '王晓莉', '王学斌',
+            '侯平栋', '杨亚科', '包亚霞', '陈江斌', '陈新平', '戴亚斌',
+            '高建洲', '郝晓彬', '何妙丽', '何跃', '后晴晴', '后玉巧',
+            '黄敬军', '景政泰', '巨琛', '雷福红', '李春建', '李娟',
+            '李恬', '李维兴', '刘雪峰', '柳苗苗', '卢水霞', '鲁文艳',
+            '康永红', '后建堂', '鲍晓霞', '褚爱虎', '董斌', '郭鹏珍',
+            '何碧玲', '何海燕', '季亚辉', '贾建平', '蒋敏', '焦银平',
+            '金瑾', '景诚', '卡毛吉', '郎志娟', '李灵', '李建兵',
+            '李明晴', '李晓梅', '廖建军', '马丽叶', '姜正明', '王爱明',
+            '包浩溥', '包红义', '曹娟勤', '陈云彪', '高薇', '关林',
+            '何鲜梅', '何杨杨', '侯亚娟', '虎贵平', '郎明军', '黎虎',
+            '李生辉', '李婷婷', '李维国', '李小凤', '李云英', '王兆瑞',
+            '霍彦直', '白明义', '包惠娟', '陈小娟', '丁睿颖', '董福平',
+            '董丽娟', '杜媛媛', '韩晓彤', '何彩云', '何成宾', '何晶',
+            '后小科', '胡永乾', '黄绪平', '贾俊杰', '郎晟', '郎治军',
+            '李澄然', '梁静', '刘凯', '马小成', '漆强龙', '包怀国',
+            '安志晶', '包亚春', '曹洁', '陈燕青', '陈治军', '杜燕',
+            '范宗胜', '付强', '郭红霞', '郭茜茜', '韩蕾', '韩雯',
+            '何路遥', '何翾', '后晓刚', '李金明', '梁育宏', '何君清',
+            '蒋宗平', '李慧萍', '李晓安', '刘贵才', '吕晓红', '潘硕珍',
+            '吴文辉', '闫效斌', '张国良', '吴玉环', '张菲', '张小英',
+            '赵军贤', '朱立红', '宗凯', '罗文梅', '马俊杰', '米娜',
+            '邱元香', '田莉', '王亚娟', '魏小平', '温秋艳', '杨春苗',
+            '杨雯媛', '杨亚斌', '张华', '张善君', '赵通敏', '蒲建平',
+            '乔学龙', '任新强', '陶雄德', '田喜梅', '王安磊', '王恒',
+            '王蓉', '武小虎', '牙清华', '杨春霞', '刘伟霞', '卢碧辉',
+            '吕文贤', '马小波', '齐文军', '任蕊蕊', '申萃贤', '唐亚军',
+            '田文', '王顺弟', '王伟耀', '王亚平', '肖龙', '张慈全',
+            '张建新', '任俊义', '申小琴', '苏敏', '汪敏霞', '汪瑞雪',
+            '王虹', '王立娟', '王亚军', '吴小娟', '徐雪琴', '杨小舟',
+            '移娟娣', '张都学', '张小丽', '张绪忠', '张玉梅', '朱建省',
+            '梅旭东', '漆丽莉', '齐晨光', '乔宁', '舒思程', '司嘉宝',
+            '汪辉辉', '吴鹏刚', '徐翠云', '尤晓琼', '张海霞', '张文静',
+            '张小军', '张小武', '张欣', '赵悦', '周璟丽'
+        ];
+
+        // 拼音首字母映射表（完整）
+        const teacherPinyinMap = {
+            '周军花': 'zjh',
+            '谢君': 'xj',
+            '安东明': 'adm',
+            '包丽娟': 'blj',
+            '邓斌': 'db',
+            '邓美': 'dm',
+            '高菲菲': 'gff',
+            '黄朝霞': 'hcx',
+            '郎翠琴': 'lcq',
+            '李惠洁': 'lhj',
+            '李林': 'll',
+            '李亚辉': 'lyh',
+            '马锦彪': 'mjb',
+            '宁秀娟': 'nxj',
+            '蒲雪': 'px',
+            '任凤娇': 'rfj',
+            '任小伟': 'rxw',
+            '孙礼心玉': 'slxy',
+            '孙晓霞': 'sxx',
+            '万德克': 'wdk',
+            '王丽': 'wl',
+            '王巧秀': 'wqx',
+            '王晓莉': 'wxl',
+            '王学斌': 'wxb',
+            '侯平栋': 'hpd',
+            '杨亚科': 'yyk',
+            '包亚霞': 'byx',
+            '陈江斌': 'cjb',
+            '陈新平': 'cxp',
+            '戴亚斌': 'dyb',
+            '高建洲': 'gjz',
+            '郝晓彬': 'hxb',
+            '何妙丽': 'hml',
+            '何跃': 'hy',
+            '后晴晴': 'hqq',
+            '后玉巧': 'hyq',
+            '黄敬军': 'hjj',
+            '景政泰': 'jzt',
+            '巨琛': 'jc',
+            '雷福红': 'lfh',
+            '李春建': 'lcj',
+            '李娟': 'lj',
+            '李恬': 'lt',
+            '李维兴': 'lwx',
+            '刘雪峰': 'lxf',
+            '柳苗苗': 'lmm',
+            '卢水霞': 'lsx',
+            '鲁文艳': 'lwy',
+            '康永红': 'kyh',
+            '后建堂': 'hjt',
+            '鲍晓霞': 'bxx',
+            '褚爱虎': 'cah',
+            '董斌': 'db',
+            '郭鹏珍': 'gpz',
+            '何碧玲': 'hbl',
+            '何海燕': 'hhy',
+            '季亚辉': 'jyh',
+            '贾建平': 'jjp',
+            '蒋敏': 'jm',
+            '焦银平': 'jyp',
+            '金瑾': 'jj',
+            '景诚': 'jc',
+            '卡毛吉': 'kmj',
+            '郎志娟': 'lzj',
+            '李灵': 'll',
+            '李建兵': 'ljb',
+            '李明晴': 'lmq',
+            '李晓梅': 'lxm',
+            '廖建军': 'ljj',
+            '马丽叶': 'mly',
+            '姜正明': 'jzm',
+            '王爱明': 'wam',
+            '包浩溥': 'bhp',
+            '包红义': 'bhy',
+            '曹娟勤': 'cjq',
+            '陈云彪': 'cyb',
+            '高薇': 'gw',
+            '关林': 'gl',
+            '何鲜梅': 'hxm',
+            '何杨杨': 'hyy',
+            '侯亚娟': 'hyj',
+            '虎贵平': 'hgp',
+            '郎明军': 'lmj',
+            '黎虎': 'lh',
+            '李生辉': 'lsh',
+            '李婷婷': 'ltt',
+            '李维国': 'lwg',
+            '李小凤': 'lxf',
+            '李云英': 'lyy',
+            '王兆瑞': 'wzr',
+            '霍彦直': 'hyz',
+            '白明义': 'bmy',
+            '包惠娟': 'bhj',
+            '陈小娟': 'cxj',
+            '丁睿颖': 'dry',
+            '董福平': 'dfp',
+            '董丽娟': 'dlj',
+            '杜媛媛': 'dyy',
+            '韩晓彤': 'hxt',
+            '何彩云': 'hcy',
+            '何成宾': 'hcb',
+            '何晶': 'hj',
+            '后小科': 'hxk',
+            '胡永乾': 'hyq',
+            '黄绪平': 'hxp',
+            '贾俊杰': 'jjj',
+            '郎晟': 'ls',
+            '郎治军': 'lzj',
+            '李澄然': 'lcr',
+            '梁静': 'lj',
+            '刘凯': 'lk',
+            '马小成': 'mxc',
+            '漆强龙': 'qql',
+            '包怀国': 'bhg',
+            '安志晶': 'azj',
+            '包亚春': 'byc',
+            '曹洁': 'cj',
+            '陈燕青': 'cyq',
+            '陈治军': 'czj',
+            '杜燕': 'dy',
+            '范宗胜': 'fzs',
+            '付强': 'fq',
+            '郭红霞': 'ghx',
+            '郭茜茜': 'gqq',
+            '韩蕾': 'hl',
+            '韩雯': 'hw',
+            '何路遥': 'hly',
+            '何翾': 'hx',
+            '后晓刚': 'hxg',
+            '李金明': 'ljm',
+            '梁育宏': 'lyh',
+            '何君清': 'hjq',
+            '蒋宗平': 'jzp',
+            '李慧萍': 'lhp',
+            '李晓安': 'lxa',
+            '刘贵才': 'lgc',
+            '吕晓红': 'lxh',
+            '潘硕珍': 'psz',
+            '吴文辉': 'wwh',
+            '闫效斌': 'yxb',
+            '张国良': 'zgl',
+            '吴玉环': 'wyh',
+            '张菲': 'zf',
+            '张小英': 'zxy',
+            '赵军贤': 'zjx',
+            '朱立红': 'zlh',
+            '宗凯': 'zk',
+            '罗文梅': 'lwm',
+            '马俊杰': 'mjj',
+            '米娜': 'mn',
+            '邱元香': 'qyx',
+            '田莉': 'tl',
+            '王亚娟': 'wyj',
+            '魏小平': 'wxp',
+            '温秋艳': 'wqy',
+            '杨春苗': 'ycm',
+            '杨雯媛': 'ywy',
+            '杨亚斌': 'yyb',
+            '张华': 'zh',
+            '张善君': 'zsj',
+            '赵通敏': 'ztm',
+            '蒲建平': 'pjp',
+            '乔学龙': 'qxl',
+            '任新强': 'rxq',
+            '陶雄德': 'txd',
+            '田喜梅': 'txm',
+            '王安磊': 'wal',
+            '王恒': 'wh',
+            '王蓉': 'wr',
+            '武小虎': 'wxh',
+            '牙清华': 'yqh',
+            '杨春霞': 'ycx',
+            '刘伟霞': 'lwx',
+            '卢碧辉': 'lbh',
+            '吕文贤': 'lwx',
+            '马小波': 'mxb',
+            '齐文军': 'qwj',
+            '任蕊蕊': 'rrr',
+            '申萃贤': 'scx',
+            '唐亚军': 'tyj',
+            '田文': 'tw',
+            '王顺弟': 'wsd',
+            '王伟耀': 'wwy',
+            '王亚平': 'wyp',
+            '肖龙': 'xl',
+            '张慈全': 'zcq',
+            '张建新': 'zjx',
+            '任俊义': 'rjy',
+            '申小琴': 'sxq',
+            '苏敏': 'sm',
+            '汪敏霞': 'wmx',
+            '汪瑞雪': 'wrx',
+            '王虹': 'wh',
+            '王立娟': 'wlj',
+            '王亚军': 'wyj',
+            '吴小娟': 'wxj',
+            '徐雪琴': 'xxq',
+            '杨小舟': 'yxz',
+            '移娟娣': 'yjd',
+            '张都学': 'zdx',
+            '张小丽': 'zxl',
+            '张绪忠': 'zxz',
+            '张玉梅': 'zym',
+            '朱建省': 'zjs',
+            '梅旭东': 'mxd',
+            '漆丽莉': 'qll',
+            '齐晨光': 'qcg',
+            '乔宁': 'qn',
+            '舒思程': 'ssc',
+            '司嘉宝': 'sjb',
+            '汪辉辉': 'whh',
+            '吴鹏刚': 'wpg',
+            '徐翠云': 'xcy',
+            '尤晓琼': 'yxq',
+            '张海霞': 'zhx',
+            '张文静': 'zwj',
+            '张小军': 'zxj',
+            '张小武': 'zxw',
+            '张欣': 'zx',
+            '赵悦': 'zy',
+            '周璟丽': 'zjl'
+        };
+
+        const DEFAULT_CLASSES = [
+            { name: '高三(2)班', group: '高三2级部' },
+            { name: '高三(13)班', group: '高三2级部' },
+            { name: '高三(14)班', group: '高三2级部' },
+            { name: '高三(15)班', group: '高三2级部' },
+            { name: '高三(16)班', group: '高三2级部' },
+            { name: '高三(17)班', group: '高三2级部' },
+            { name: '高三(18)班', group: '高三2级部' },
+            { name: '高三(19)班', group: '高三2级部' },
+            { name: '高三(20)班', group: '高三2级部' },
+            { name: '高三(21)班', group: '高三2级部' },
+            { name: '高三(22)班', group: '高三2级部' }
+        ];
+
+        // ---------- 工具函数 ----------
+        function getToday() {
+            const d = new Date();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${d.getFullYear()}-${m}-${day}`;
+        }
+
+        function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        // ---------- Toast ----------
+        function showToast(msg, type = 'info', dur = 3000) {
+            const wrap = document.getElementById('toastWrap');
+            const el = document.createElement('div');
+            el.className = `toast-item toast-${type}`;
+            el.textContent = msg;
+            wrap.appendChild(el);
+            setTimeout(() => {
+                el.classList.add('hide');
+                setTimeout(() => el.remove(), 250);
+            }, dur);
+        }
+
+        // ---------- 存储 ----------
+        function getData() {
+            try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; } catch (_) { return []; }
+        }
+
+        function saveData(arr) {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); return true; } catch (_) { return false; }
+        }
+
+        function getTeacherList() {
+            try {
+                const raw = localStorage.getItem(TEACHER_LIST_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0].name) {
+                        const migrated = parsed.map(t => t.name);
+                        localStorage.setItem(TEACHER_LIST_KEY, JSON.stringify(migrated));
+                        return migrated;
+                    }
+                    return parsed;
+                }
+                localStorage.setItem(TEACHER_LIST_KEY, JSON.stringify(DEFAULT_TEACHERS));
+                return DEFAULT_TEACHERS;
+            } catch (_) { return DEFAULT_TEACHERS; }
+        }
+
+        function saveTeacherList(arr) {
+            try { localStorage.setItem(TEACHER_LIST_KEY, JSON.stringify(arr)); return true; } catch (_) { return false; }
+        }
+
+        function getClassList() {
+            try {
+                const raw = localStorage.getItem(CLASS_LIST_KEY);
+                if (raw) return JSON.parse(raw);
+                localStorage.setItem(CLASS_LIST_KEY, JSON.stringify(DEFAULT_CLASSES));
+                return DEFAULT_CLASSES;
+            } catch (_) { return DEFAULT_CLASSES; }
+        }
+
+        function saveClassList(arr) {
+            try { localStorage.setItem(CLASS_LIST_KEY, JSON.stringify(arr)); return true; } catch (_) { return false; }
+        }
+
+        // ---------- 自动备份 ----------
+        let autoBackupTimer = null;
+
+        function toggleAutoBackup(enabled) {
+            if (enabled) {
+                if (autoBackupTimer) clearInterval(autoBackupTimer);
+                autoBackupTimer = setInterval(() => {
+                    const data = getData();
+                    const teachers = getTeacherList();
+                    const classes = getClassList();
+                    const backup = {
+                        version: APP_VERSION,
+                        time: new Date().toISOString(),
+                        data: data,
+                        teachers: teachers,
+                        classes: classes
+                    };
+                    try {
+                        localStorage.setItem('autoBackup_v2', JSON.stringify(backup));
+                        showToast('🔄 自动备份已保存', 'info', 1000);
+                    } catch (e) { /* ignore */ }
+                }, 5 * 60 * 1000);
+                document.getElementById('autoBackupStatus').textContent = '当前状态：已开启（每5分钟保存一次）';
+                showToast('✅ 自动备份已开启', 'success');
+            } else {
+                if (autoBackupTimer) { clearInterval(autoBackupTimer);
+                    autoBackupTimer = null; }
+                document.getElementById('autoBackupStatus').textContent = '当前状态：已关闭';
+                showToast('⏹️ 自动备份已关闭', 'info');
+            }
+        }
+
+        // ================================================================
+        //  拼音联想核心
+        // ================================================================
+        function createFilterFunction(dataSource) {
+            return function(query) {
+                if (!query || query.length === 0) return [];
+                const trim = query.trim();
+                if (trim === '') return [];
+                const lower = trim.toLowerCase();
+                const hasLetter = /[a-zA-Z]/.test(trim);
+                return dataSource.filter(name => {
+                    if (name.includes(trim)) return true;
+                    if (hasLetter) {
+                        const py = teacherPinyinMap[name] || '';
+                        if (py.includes(lower)) return true;
+                    }
+                    return false;
+                });
+            };
+        }
+
+        // 通用联想绑定
+        function bindAutocompleteSimple(input, dataSource, onSelect) {
+            const wrap = input.closest('.teacher-input-wrap') || input.parentElement;
+            if (wrap) wrap.style.position = 'relative';
+
+            let ul = wrap.querySelector('.autocomplete-list');
+            if (!ul) {
+                ul = document.createElement('ul');
+                ul.className = 'autocomplete-list';
+                wrap.appendChild(ul);
+            }
+
+            let active = -1,
+                matches = [];
+            const filterFn = createFilterFunction(dataSource);
+
+            function render(arr) {
+                ul.innerHTML = '';
+                if (!arr || arr.length === 0) {
+                    const q = input.value.trim();
+                    if (q.length > 0) {
+                        const li = document.createElement('li');
+                        li.className = 'no-match';
+                        li.textContent = '⚠️ 未匹配';
+                        ul.appendChild(li);
+                        ul.classList.add('show');
+                    } else { ul.classList.remove('show'); }
+                    active = -1;
+                    return;
+                }
+                matches = arr;
+                arr.forEach((name, idx) => {
+                    const li = document.createElement('li');
+                    li.textContent = name;
+                    li.dataset.index = idx;
+                    const q = input.value.trim();
+                    const pos = name.indexOf(q);
+                    if (pos !== -1) {
+                        li.innerHTML = escapeHtml(name.slice(0, pos)) +
+                            `<span class="highlight">${escapeHtml(name.slice(pos, pos+q.length))}</span>` +
+                            escapeHtml(name.slice(pos + q.length));
+                    }
+                    li.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        const val = this.textContent.trim();
+                        input.value = val;
+                        ul.classList.remove('show');
+                        active = -1;
+                        if (onSelect) onSelect(val);
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                    li.addEventListener('mouseenter', function() {
+                        const i = parseInt(this.dataset.index);
+                        setActive(i);
+                    });
+                    ul.appendChild(li);
+                });
+                ul.classList.add('show');
+                active = -1;
+            }
+
+            function setActive(idx) {
+                const items = ul.querySelectorAll('li:not(.no-match)');
+                items.forEach((li, i) => li.classList.toggle('active', i === idx));
+                if (idx >= 0 && idx < items.length) items[idx].scrollIntoView({ block: 'nearest' });
+                active = idx;
+            }
+
+            function selectActive() {
+                if (active >= 0 && active < matches.length) {
+                    const val = matches[active];
+                    input.value = val;
+                    ul.classList.remove('show');
+                    active = -1;
+                    if (onSelect) onSelect(val);
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    return true;
+                }
+                return false;
+            }
+
+            const newInput = input.cloneNode(true);
+            input.parentNode.replaceChild(newInput, input);
+            newInput.addEventListener('input', function() {
+                const v = this.value;
+                const filtered = filterFn(v);
+                render(filtered);
+                this.classList.remove('error');
+            });
+            newInput.addEventListener('focus', function() {
+                const v = this.value.trim();
+                if (v.length > 0) {
+                    const filtered = filterFn(v);
+                    render(filtered);
+                }
+                this.classList.remove('error');
+            });
+            newInput.addEventListener('blur', function() {
+                setTimeout(() => { ul.classList.remove('show');
+                    active = -1; }, 180);
+            });
+            newInput.addEventListener('keydown', function(e) {
+                const items = ul.querySelectorAll('li:not(.no-match)');
+                if (items.length === 0) { if (e.key === 'Enter') { ul.classList.remove('show'); } return; }
+                if (e.key === 'ArrowDown') { e.preventDefault();
+                    setActive(active + 1 < items.length ? active + 1 : 0); } else if (e.key === 'ArrowUp') { e
+                        .preventDefault();
+                    setActive(active - 1 >= 0 ? active - 1 : items.length - 1); } else if (e.key === 'Enter') { e
+                        .preventDefault(); if (active >= 0 && active < matches.length) selectActive();
+                    else { ul.classList.remove('show'); } } else if (e.key === 'Escape') { ul.classList.remove(
+                        'show');
+                    active = -1; }
+            });
+
+            return newInput;
+        }
+
+        // 录入页面的联想绑定（只填充，不自动添加）
+        function bindAutocompleteForInput(input, dataSource) {
+            const wrap = input.closest('.teacher-input-wrap') || input.parentElement;
+            if (wrap) wrap.style.position = 'relative';
+
+            let ul = wrap.querySelector('.autocomplete-list');
+            if (!ul) {
+                ul = document.createElement('ul');
+                ul.className = 'autocomplete-list';
+                wrap.appendChild(ul);
+            }
+
+            let active = -1,
+                matches = [];
+            const filterFn = createFilterFunction(dataSource);
+
+            function render(arr) {
+                ul.innerHTML = '';
+                if (!arr || arr.length === 0) {
+                    const q = input.value.trim();
+                    if (q.length > 0) {
+                        const li = document.createElement('li');
+                        li.className = 'no-match';
+                        li.textContent = '⚠️ 未匹配';
+                        ul.appendChild(li);
+                        ul.classList.add('show');
+                    } else { ul.classList.remove('show'); }
+                    active = -1;
+                    return;
+                }
+                matches = arr;
+                arr.forEach((name, idx) => {
+                    const li = document.createElement('li');
+                    li.textContent = name;
+                    li.dataset.index = idx;
+                    const q = input.value.trim();
+                    const pos = name.indexOf(q);
+                    if (pos !== -1) {
+                        li.innerHTML = escapeHtml(name.slice(0, pos)) +
+                            `<span class="highlight">${escapeHtml(name.slice(pos, pos+q.length))}</span>` +
+                            escapeHtml(name.slice(pos + q.length));
+                    }
+                    li.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        input.value = this.textContent.trim();
+                        ul.classList.remove('show');
+                        active = -1;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        saveDraft();
+                    });
+                    li.addEventListener('mouseenter', function() {
+                        const i = parseInt(this.dataset.index);
+                        setActive(i);
+                    });
+                    ul.appendChild(li);
+                });
+                ul.classList.add('show');
+                active = -1;
+            }
+
+            function setActive(idx) {
+                const items = ul.querySelectorAll('li:not(.no-match)');
+                items.forEach((li, i) => li.classList.toggle('active', i === idx));
+                if (idx >= 0 && idx < items.length) items[idx].scrollIntoView({ block: 'nearest' });
+                active = idx;
+            }
+
+            function selectActive() {
+                if (active >= 0 && active < matches.length) {
+                    input.value = matches[active];
+                    ul.classList.remove('show');
+                    active = -1;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    saveDraft();
+                    return true;
+                }
+                return false;
+            }
+
+            input.removeEventListener('input', saveDraft);
+            input.addEventListener('input', function() {
+                const v = this.value;
+                const filtered = filterFn(v);
+                render(filtered);
+                this.classList.remove('error');
+                saveDraft();
+            });
+            input.addEventListener('focus', function() {
+                const v = this.value.trim();
+                if (v.length > 0) {
+                    const filtered = filterFn(v);
+                    render(filtered);
+                }
+                this.classList.remove('error');
+            });
+            input.addEventListener('blur', function() {
+                setTimeout(() => { ul.classList.remove('show');
+                    active = -1; }, 180);
+            });
+            input.addEventListener('keydown', function(e) {
+                const items = ul.querySelectorAll('li:not(.no-match)');
+                if (items.length === 0) { if (e.key === 'Enter') { ul.classList.remove('show');
+                        saveDraft(); } return; }
+                if (e.key === 'ArrowDown') { e.preventDefault();
+                    setActive(active + 1 < items.length ? active + 1 : 0); } else if (e.key === 'ArrowUp') { e
+                        .preventDefault();
+                    setActive(active - 1 >= 0 ? active - 1 : items.length - 1); } else if (e.key === 'Enter') { e
+                        .preventDefault(); if (active >= 0 && active < matches.length) selectActive();
+                    else { ul.classList.remove('show');
+                        saveDraft(); } } else if (e.key === 'Escape') { ul.classList.remove('show');
+                    active = -1; }
+            });
+        }
+
+        // ================================================================
+        //  草稿
+        // ================================================================
+        function saveDraft() {
+            const draft = {
+                date: document.getElementById('date').value,
+                weekNum: document.getElementById('weekNum').value,
+                jieci: document.getElementById('jieci').value,
+                xunkeTeacher: document.getElementById('xunkeTeacher').value,
+                teachers: {},
+                notes: {}
+            };
+            const classes = getClassList().map(c => c.name);
+            classes.forEach(cn => {
+                const t = document.querySelector(`.tea-input[data-class="${cn}"]`);
+                const n = document.querySelector(`.note-select[data-class="${cn}"]`);
+                if (t) draft.teachers[cn] = t.value;
+                if (n) draft.notes[cn] = n.value;
+            });
+            try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch (_) {}
+        }
+
+        function loadDraft() {
+            try { const raw = localStorage.getItem(DRAFT_KEY); return raw ? JSON.parse(raw) : null; } catch (_) { return null; }
+        }
+
+        function applyDraft(draft) {
+            if (!draft) return;
+            if (draft.date) document.getElementById('date').value = draft.date;
+            if (draft.weekNum) document.getElementById('weekNum').value = draft.weekNum;
+            if (draft.jieci) document.getElementById('jieci').value = draft.jieci;
+            if (draft.xunkeTeacher) document.getElementById('xunkeTeacher').value = draft.xunkeTeacher;
+            if (draft.teachers) {
+                Object.keys(draft.teachers).forEach(cn => {
+                    const inp = document.querySelector(`.tea-input[data-class="${cn}"]`);
+                    if (inp) inp.value = draft.teachers[cn] || '';
+                });
+            }
+            if (draft.notes) {
+                Object.keys(draft.notes).forEach(cn => {
+                    const sel = document.querySelector(`.note-select[data-class="${cn}"]`);
+                    if (sel) sel.value = draft.notes[cn] || '正常';
+                });
+            }
+        }
+
+        function bindDraftAutoSave() {
+            const els = document.querySelectorAll('#date, #weekNum, #jieci, #xunkeTeacher, .tea-input, .note-select');
+            els.forEach(el => {
+                el.removeEventListener('input', saveDraft);
+                el.removeEventListener('change', saveDraft);
+                el.addEventListener('input', saveDraft);
+                el.addEventListener('change', saveDraft);
+            });
+        }
+
+        // ================================================================
+        //  渲染录入表格
+        // ================================================================
+        function renderClassTable() {
+            const tbody = document.getElementById('classBody');
+            tbody.innerHTML = '';
+            const classList = getClassList().map(c => c.name);
+            const teacherList = getTeacherList();
+            classList.forEach(cn => {
+                const tr = document.createElement('tr');
+                const td1 = document.createElement('td');
+                td1.style.fontWeight = '600';
+                td1.textContent = cn;
+                tr.appendChild(td1);
+
+                const td2 = document.createElement('td');
+                td2.className = 'teacher-cell';
+                const wrap = document.createElement('div');
+                wrap.className = 'teacher-input-wrap';
+                const inp = document.createElement('input');
+                inp.className = 'tea-input';
+                inp.dataset.class = cn;
+                inp.placeholder = '输入姓名或拼音首字母';
+                inp.maxLength = 20;
+                inp.autocomplete = 'off';
+                wrap.appendChild(inp);
+                td2.appendChild(wrap);
+                tr.appendChild(td2);
+
+                const td3 = document.createElement('td');
+                td3.className = 'note-cell';
+                const sel = document.createElement('select');
+                sel.className = 'note-select';
+                sel.dataset.class = cn;
+                ['正常', '迟到', '缺课', '请假'].forEach(v => {
+                    const o = document.createElement('option');
+                    o.value = v;
+                    o.textContent = v;
+                    sel.appendChild(o);
+                });
+                td3.appendChild(sel);
+                tr.appendChild(td3);
+
+                tbody.appendChild(tr);
+                bindAutocompleteForInput(inp, teacherList);
+                inp.addEventListener('input', saveDraft);
+                sel.addEventListener('change', saveDraft);
+            });
+
+            const xunke = document.getElementById('xunkeTeacher');
+            bindAutocompleteForInput(xunke, getTeacherList());
+
+            const draft = loadDraft();
+            if (draft) applyDraft(draft);
+            bindDraftAutoSave();
+        }
+
+        // ================================================================
+        //  验证与保存（含唯一性校验）
+        // ================================================================
+        function validate() {
+            const date = document.getElementById('date').value;
+            const week = document.getElementById('weekNum').value.trim();
+            const xunke = document.getElementById('xunkeTeacher').value.trim();
+            let ok = true;
+            if (!date) { document.getElementById('date').classList.add('error');
+                ok = false; } else document.getElementById('date').classList.remove('error');
+            if (!week || isNaN(week) || parseInt(week) < 1 || parseInt(week) > 30) { document.getElementById('weekNum')
+                    .classList.add('error');
+                ok = false; } else document.getElementById('weekNum').classList.remove('error');
+            if (!xunke || xunke.length < 2) { document.getElementById('xunkeTeacher').classList.add('error');
+                ok = false; } else document.getElementById('xunkeTeacher').classList.remove('error');
+
+            const teaInputs = document.querySelectorAll('.tea-input');
+            let has = false;
+            teaInputs.forEach(inp => {
+                if (inp.value.trim()) has = true;
+                inp.classList.toggle('error', !inp.value.trim());
+            });
+            if (!has) { showToast('请至少填写一个班级的授课教师', 'warning'); return false; }
+            if (!ok) { showToast('请完善红色标记的必填项', 'warning'); return false; }
+            return true;
+        }
+
+        function handleSave() {
+            if (!validate()) return;
+            const date = document.getElementById('date').value;
+            const week = document.getElementById('weekNum').value.trim();
+            const jieci = document.getElementById('jieci').value;
+            const xunke = document.getElementById('xunkeTeacher').value.trim();
+            const classList = getClassList().map(c => c.name);
+            let all = getData();
+            const news = [];
+            const warns = [];
+
+            classList.forEach(cn => {
+                const tea = document.querySelector(`.tea-input[data-class="${cn}"]`).value.trim();
+                const note = document.querySelector(`.note-select[data-class="${cn}"]`).value || '正常';
+                if (!tea) return;
+
+                // ★ 唯一性校验：同一班级同一日期同一节次不可重复
+                const exists = all.some(i =>
+                    i.date === date &&
+                    String(i.weekNum) === String(week) &&
+                    i.jieci === jieci &&
+                    i.banji === cn
+                );
+                if (exists) { warns.push(cn); return; }
+
+                news.push({
+                    id: genId(),
+                    date,
+                    weekNum: String(week),
+                    jieci,
+                    banji: cn,
+                    teacher: tea,
+                    xunkeTeacher: xunke,
+                    remark: note,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+            });
+
+            if (warns.length) showToast(`跳过重复记录: ${warns.join('、')}`, 'warning', 3500);
+            if (news.length === 0) {
+                if (warns.length) showToast('所有班级均已存在记录，无需重复保存', 'info');
+                else showToast('未填写任何班级的授课教师', 'warning');
+                return;
+            }
+
+            all.push(...news);
+            if (saveData(all)) {
+                showToast(`✅ 保存成功！共录入 ${news.length} 个班级`, 'success');
+                renderHistory();
+                renderSummary();
+                renderAbnormal();
+                saveDraft();
+            }
+        }
+
+        // ================================================================
+        //  统计渲染
+        // ================================================================
+        let currentFilter = { dateStart: '', dateEnd: '', teacher: '', banji: '', jieci: '' };
+
+        function renderHistory() {
+            const list = getData();
+            const filtered = list.filter(i => {
+                if (currentFilter.dateStart && i.date < currentFilter.dateStart) return false;
+                if (currentFilter.dateEnd && i.date > currentFilter.dateEnd) return false;
+                if (currentFilter.teacher && !i.teacher.includes(currentFilter.teacher)) return false;
+                if (currentFilter.banji && i.banji !== currentFilter.banji) return false;
+                if (currentFilter.jieci && i.jieci !== currentFilter.jieci) return false;
+                return true;
+            });
+
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '';
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr class="empty-row"><td colspan="9">📭 暂无匹配记录</td></tr>`;
+                updateStats(filtered);
+                return;
+            }
+            const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date) || a.banji.localeCompare(b.banji));
+            sorted.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${idx+1}</td>
+                    <td>${escapeHtml(item.date)}</td>
+                    <td>${escapeHtml(item.weekNum)}</td>
+                    <td>${escapeHtml(item.jieci)}</td>
+                    <td>${escapeHtml(item.banji)}</td>
+                    <td>${escapeHtml(item.teacher)}</td>
+                    <td>${escapeHtml(item.xunkeTeacher)}</td>
+                    <td>${escapeHtml(item.remark)}</td>
+                    <td>
+                        <button class="edit-btn" data-id="${item.id}">编辑</button>
+                        <button class="del-btn" data-id="${item.id}">删除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            tbody.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() { openEdit(this.dataset.id); });
+            });
+            tbody.querySelectorAll('.del-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    if (!confirm('确定删除此记录吗？')) return;
+                    let list2 = getData();
+                    const idx = list2.findIndex(i => i.id === id);
+                    if (idx === -1) { showToast('记录不存在', 'warning'); return; }
+                    list2.splice(idx, 1);
+                    if (saveData(list2)) {
+                        showToast('已删除', 'success');
+                        renderHistory();
+                        renderSummary();
+                        renderAbnormal();
+                    }
+                });
+            });
+            updateStats(filtered);
+        }
+
+        function updateStats(list) {
+            document.getElementById('totalRecords').textContent = list.length;
+            const teachers = new Set(list.map(i => i.teacher).filter(Boolean));
+            const days = new Set(list.map(i => i.date).filter(Boolean));
+            document.getElementById('totalTeachers').textContent = teachers.size;
+            document.getElementById('totalDays').textContent = days.size;
+        }
+
+        function renderSummary() {
+            const list = getData();
+            const wrap = document.getElementById('summaryWrap');
+            if (list.length === 0) { wrap.innerHTML =
+                '<p style="text-align:center;color:#94a3b8;padding:20px 0;">暂无数据</p>'; return; }
+            const stat = {};
+            list.forEach(item => {
+                const t = item.teacher || '未知';
+                if (!stat[t]) stat[t] = Object.fromEntries(ALL_JIECI.map(j => [j, { num: 0, classList: [] }]));
+                const j = item.jieci || '未分类';
+                if (!stat[t][j]) stat[t][j] = { num: 0, classList: [] };
+                stat[t][j].num += 1;
+                const b = item.banji || '';
+                if (b && !stat[t][j].classList.includes(b)) stat[t][j].classList.push(b);
+            });
+            let html =
+                `<table class="data-table"><thead><tr><th>教师</th>${ALL_JIECI.map(j=>`<th>${j}</th>`).join('')}<th>总课时</th></tr></thead><tbody>`;
+            Object.keys(stat).sort().forEach(t => {
+                let total = 0;
+                html += `<tr><td style="font-weight:600">${escapeHtml(t)}</td>`;
+                ALL_JIECI.forEach(j => {
+                    const n = stat[t][j]?.num || 0;
+                    total += n;
+                    html += `<td>${n}</td>`;
+                });
+                html += `<td class="total-cell">${total}</td></tr>`;
+                html += `<tr class="class-row"><td>对应班级</td>`;
+                ALL_JIECI.forEach(j => {
+                    const cls = stat[t][j]?.classList || [];
+                    html += `<td>${cls.join('、')}</td>`;
+                });
+                html += `<td></td></tr>`;
+            });
+            html += '</tbody></table>';
+            wrap.innerHTML = html;
+        }
+
+        function renderAbnormal() {
+            const list = getData();
+            const wrap = document.getElementById('abnormalWrap');
+            const abnormal = list.filter(i => i.remark && i.remark !== '正常');
+            if (abnormal.length === 0) { wrap.innerHTML =
+                '<p style="text-align:center;color:#94a3b8;padding:12px 0;">✅ 暂无异常</p>'; return; }
+            let html =
+                `<table class="data-table"><thead><tr><th>日期</th><th>班级</th><th>授课教师</th><th>情况</th></tr></thead><tbody>`;
+            abnormal.forEach(i => {
+                html +=
+                    `<tr><td>${escapeHtml(i.date)}</td><td>${escapeHtml(i.banji)}</td><td>${escapeHtml(i.teacher)}</td><td style="color:#dc2626;font-weight:600;">${escapeHtml(i.remark)}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            wrap.innerHTML = html;
+        }
+
+        // ================================================================
+        //  编辑
+        // ================================================================
+        let editingId = null;
+
+        function openEdit(id) {
+            const list = getData();
+            const item = list.find(i => i.id === id);
+            if (!item) { showToast('记录不存在', 'error'); return; }
+            editingId = id;
+            document.getElementById('editDate').value = item.date || '';
+            document.getElementById('editWeekNum').value = item.weekNum || '';
+            document.getElementById('editJieci').value = item.jieci || '';
+            document.getElementById('editBanji').value = item.banji || '';
+            document.getElementById('editTeacher').value = item.teacher || '';
+            document.getElementById('editXunke').value = item.xunkeTeacher || '';
+            document.getElementById('editRemark').value = item.remark || '正常';
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        function closeEdit() { document.getElementById('editModal').classList.remove('show');
+            editingId = null; }
+
+        function saveEdit() {
+            if (!editingId) return;
+            const list = getData();
+            const idx = list.findIndex(i => i.id === editingId);
+            if (idx === -1) { showToast('记录不存在', 'error'); return; }
+            const item = list[idx];
+            item.date = document.getElementById('editDate').value;
+            item.weekNum = document.getElementById('editWeekNum').value.trim();
+            item.jieci = document.getElementById('editJieci').value;
+            item.teacher = document.getElementById('editTeacher').value.trim();
+            item.xunkeTeacher = document.getElementById('editXunke').value.trim();
+            item.remark = document.getElementById('editRemark').value;
+            item.updatedAt = new Date().toISOString();
+            if (saveData(list)) {
+                showToast('✅ 已更新', 'success');
+                closeEdit();
+                renderHistory();
+                renderSummary();
+                renderAbnormal();
+            }
+        }
+
+        // ================================================================
+        //  筛选
+        // ================================================================
+        function applyFilter() {
+            currentFilter.dateStart = document.getElementById('filterDateStart').value;
+            currentFilter.dateEnd = document.getElementById('filterDateEnd').value;
+            currentFilter.teacher = document.getElementById('filterTeacher').value.trim();
+            currentFilter.banji = document.getElementById('filterBanji').value;
+            currentFilter.jieci = document.getElementById('filterJieci').value;
+            renderHistory();
+        }
+
+        function resetFilter() {
+            document.getElementById('filterDateStart').value = '';
+            document.getElementById('filterDateEnd').value = '';
+            document.getElementById('filterTeacher').value = '';
+            document.getElementById('filterBanji').value = '';
+            document.getElementById('filterJieci').value = '';
+            currentFilter = { dateStart: '', dateEnd: '', teacher: '', banji: '', jieci: '' };
+            renderHistory();
+        }
+
+        function populateFilter() {
+            const bSel = document.getElementById('filterBanji');
+            const cList = getClassList().map(c => c.name);
+            bSel.innerHTML = '<option value="">全部班级</option>';
+            cList.forEach(c => { const o = document.createElement('option');
+                o.value = c;
+                o.textContent = c;
+                bSel.appendChild(o); });
+
+            const jSel = document.getElementById('filterJieci');
+            jSel.innerHTML = '<option value="">全部节次</option>';
+            ALL_JIECI.forEach(j => { const o = document.createElement('option');
+                o.value = j;
+                o.textContent = j;
+                jSel.appendChild(o); });
+        }
+
+        // ================================================================
+        //  ★★★ 导出与备份核心（增加 App 环境兼容性） ★★★
+        // ================================================================
+        function checkXLSX() {
+            if (typeof XLSX === 'undefined') {
+                showToast('❌ 表格库未加载，请检查网络后重启App', 'error', 5000);
+                return false;
+            }
+            return true;
+        }
+
+        // 导出 Excel（全部数据）
+        function exportAllExcel() {
+            if (!checkXLSX()) return;
+            const list = getData();
+            if (list.length === 0) { showToast('无数据可导出', 'warning'); return; }
+
+            try {
+                const wb = XLSX.utils.book_new();
+
+                // 明细
+                const detailHeader = ['序号', '日期', '周数', '节次', '班级', '授课教师', '巡课教师', '巡课情况'];
+                const detailRows = [detailHeader];
+                list.forEach((item, idx) => {
+                    detailRows.push([
+                        idx + 1,
+                        item.date || '',
+                        String(item.weekNum || ''),
+                        item.jieci || '',
+                        item.banji || '',
+                        item.teacher || '',
+                        item.xunkeTeacher || '',
+                        item.remark || '正常'
+                    ]);
+                });
+                const ws1 = XLSX.utils.aoa_to_sheet(detailRows);
+                ws1['!cols'] = [
+                    { wch: 6 }, { wch: 12 }, { wch: 6 }, { wch: 14 },
+                    { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }
+                ];
+                XLSX.utils.book_append_sheet(wb, ws1, '巡课明细');
+
+                // 汇总
+                const stat = {};
+                list.forEach(item => {
+                    const t = item.teacher || '未知教师';
+                    if (!stat[t]) {
+                        stat[t] = Object.fromEntries(ALL_JIECI.map(j => [j, { num: 0, classList: [] }]));
+                    }
+                    const j = item.jieci || '未分类';
+                    if (!stat[t][j]) stat[t][j] = { num: 0, classList: [] };
+                    stat[t][j].num += 1;
+                    const b = item.banji || '';
+                    if (b && !stat[t][j].classList.includes(b)) stat[t][j].classList.push(b);
+                });
+
+                const sumHeader = ['教师姓名'];
+                ALL_JIECI.forEach(j => sumHeader.push(`${j}(课时)`));
+                sumHeader.push('总课时');
+                const sumRows = [sumHeader];
+                Object.keys(stat).sort().forEach(t => {
+                    const numRow = [t];
+                    let total = 0;
+                    ALL_JIECI.forEach(j => {
+                        const n = stat[t][j]?.num || 0;
+                        total += n;
+                        numRow.push(n);
+                    });
+                    numRow.push(total);
+                    sumRows.push(numRow);
+                    const clsRow = ['对应上课班级'];
+                    ALL_JIECI.forEach(j => {
+                        const cls = stat[t][j]?.classList || [];
+                        clsRow.push(cls.join('、'));
+                    });
+                    clsRow.push('');
+                    sumRows.push(clsRow);
+                });
+                const ws2 = XLSX.utils.aoa_to_sheet(sumRows);
+                ws2['!cols'] = [{ wch: 14 }, ...ALL_JIECI.map(() => ({ wch: 10 })), { wch: 10 }];
+                XLSX.utils.book_append_sheet(wb, ws2, '教师汇总');
+
+                // ★ 使用 Blob 下载，兼容 App WebView
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/octet-stream' });
+                const fileName = `巡课全部数据_${getToday()}.xlsx`;
+
+                // 尝试使用 HTML5+ 下载（如果存在）
+                if (typeof window.plus !== 'undefined') {
+                    // App 环境
+                    const filePath = plus.io.convertLocalFileSystemURL('_doc/' + fileName);
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        plus.io.resolveLocalFileSystemURL('_doc', function(entry) {
+                            entry.getFile(fileName, { create: true }, function(fileEntry) {
+                                fileEntry.createWriter(function(writer) {
+                                    writer.write(new Blob([wbout], { type: 'application/octet-stream' }));
+                                    writer.onwrite = function() {
+                                        showToast(`✅ 已保存至: _doc/${fileName}`, 'success');
+                                        // 提示用户打开
+                                        if (confirm('文件已保存至应用私有目录，是否导出到下载文件夹？')) {
+                                            // 使用共享方式导出
+                                            plus.share.sendWithSystem({
+                                                files: [fileEntry.fullPath],
+                                                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                                            });
+                                        }
+                                    };
+                                    writer.onerror = function(e) {
+                                        showToast('保存失败', 'error');
+                                    };
+                                });
+                            });
+                        }, function(e) {
+                            // 降级：使用浏览器下载
+                            fallbackDownload(blob, fileName);
+                        });
+                    };
+                    reader.readAsArrayBuffer(blob);
+                } else {
+                    // 浏览器环境
+                    fallbackDownload(blob, fileName);
+                }
+            } catch (e) {
+                showToast('导出失败: ' + e.message, 'error');
+            }
+        }
+
+        // 降级下载方案
+        function fallbackDownload(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showToast(`📊 开始下载: ${fileName}`, 'success');
+        }
+
+        // 备份全量数据（含教师/班级名单）
+        function manualBackup() {
+            if (!checkXLSX()) return;
+            const list = getData();
+            const teachers = getTeacherList();
+            const classes = getClassList();
+            if (list.length === 0 && teachers.length === 0 && classes.length === 0) {
+                showToast('无数据可备份', 'warning');
+                return;
+            }
+            try {
+                const wb = XLSX.utils.book_new();
+                // 明细
+                const detail = [
+                    ['序号', '日期', '周数', '节次', '班级', '授课教师', '巡课教师', '巡课情况']
+                ];
+                list.forEach((i, idx) => {
+                    detail.push([idx + 1, i.date, i.weekNum, i.jieci, i.banji, i.teacher, i.xunkeTeacher, i.remark]);
+                });
+                const ws1 = XLSX.utils.aoa_to_sheet(detail);
+                XLSX.utils.book_append_sheet(wb, ws1, '巡课明细');
+
+                // 汇总
+                const stat = {};
+                list.forEach(item => {
+                    const t = item.teacher || '未知';
+                    if (!stat[t]) stat[t] = Object.fromEntries(ALL_JIECI.map(j => [j, { num: 0, classList: [] }]));
+                    const j = item.jieci || '未分类';
+                    if (!stat[t][j]) stat[t][j] = { num: 0, classList: [] };
+                    stat[t][j].num += 1;
+                    const b = item.banji || '';
+                    if (b && !stat[t][j].classList.includes(b)) stat[t][j].classList.push(b);
+                });
+                const sumHeader = ['教师姓名'];
+                ALL_JIECI.forEach(j => sumHeader.push(`${j}(课时)`));
+                sumHeader.push('总课时');
+                const sumRows = [sumHeader];
+                Object.keys(stat).sort().forEach(t => {
+                    const row = [t];
+                    let total = 0;
+                    ALL_JIECI.forEach(j => {
+                        const n = stat[t][j]?.num || 0;
+                        total += n;
+                        row.push(n);
+                    });
+                    row.push(total);
+                    sumRows.push(row);
+                    const clsRow = ['对应上课班级'];
+                    ALL_JIECI.forEach(j => {
+                        const cls = stat[t][j]?.classList || [];
+                        clsRow.push(cls.join('、'));
+                    });
+                    clsRow.push('');
+                    sumRows.push(clsRow);
+                });
+                const ws2 = XLSX.utils.aoa_to_sheet(sumRows);
+                XLSX.utils.book_append_sheet(wb, ws2, '教师汇总');
+
+                // 教师名单
+                const tData = [
+                    ['序号', '教师姓名']
+                ];
+                teachers.forEach((t, i) => tData.push([i + 1, t]));
+                const ws3 = XLSX.utils.aoa_to_sheet(tData);
+                XLSX.utils.book_append_sheet(wb, ws3, '教师名单');
+
+                // 班级名单
+                const cData = [
+                    ['序号', '班级名称', '级部']
+                ];
+                classes.forEach((c, i) => cData.push([i + 1, c.name, c.group]));
+                const ws4 = XLSX.utils.aoa_to_sheet(cData);
+                XLSX.utils.book_append_sheet(wb, ws4, '班级名单');
+
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/octet-stream' });
+                const fileName = `巡课全量备份_${getToday()}.xlsx`;
+                fallbackDownload(blob, fileName);
+                showToast('📁 全量备份已下载', 'success');
+            } catch (e) {
+                showToast('备份失败: ' + e.message, 'error');
+            }
+        }
+
+        // ================================================================
+        //  恢复、清空、打开路径
+        // ================================================================
+        document.getElementById('restoreFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    const backup = JSON.parse(ev.target.result);
+                    if (!backup.data || !Array.isArray(backup.data)) throw new Error('无效备份');
+                    if (!confirm(`⚠️ 恢复 ${backup.data.length} 条记录，覆盖当前数据？`)) return;
+                    if (saveData(backup.data)) {
+                        if (backup.teachers) saveTeacherList(backup.teachers);
+                        if (backup.classes) saveClassList(backup.classes);
+                        showToast(`✅ 恢复成功，${backup.data.length} 条记录`, 'success');
+                        renderClassTable();
+                        renderHistory();
+                        renderSummary();
+                        renderAbnormal();
+                        renderTeacherList();
+                        renderClassList();
+                        populateFilter();
+                    }
+                } catch (e) { showToast('恢复失败: ' + e.message, 'error'); }
+            };
+            reader.readAsText(file);
+            this.value = '';
+        });
+
+        function restoreData() { document.getElementById('restoreFileInput').click(); }
+
+        function clearAll() {
+            if (!confirm('确定清空所有巡课记录吗？')) return;
+            if (saveData([])) {
+                showToast('已清空', 'success');
+                renderHistory();
+                renderSummary();
+                renderAbnormal();
+            }
+        }
+
+        function openStorageFolder() {
+            showToast('📂 备份文件默认保存在您的“下载”文件夹中，请通过系统文件管理查看。', 'info', 4000);
+            // 触发一次备份，方便用户找到文件位置
+            manualBackup();
+        }
+
+        // ================================================================
+        //  教师管理
+        // ================================================================
+        function renderTeacherList() {
+            const container = document.getElementById('teacherListContainer');
+            const list = getTeacherList();
+            const keyword = document.getElementById('teacherSearch').value.trim().toLowerCase();
+            const filtered = keyword ? list.filter(name => name.toLowerCase().includes(keyword)) : list;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="empty-hint">${list.length === 0 ? '暂无教师' : '未找到匹配教师'}</div>`;
+                return;
+            }
+            let html = '';
+            filtered.forEach((name, idx) => {
+                const origIdx = list.indexOf(name);
+                html += `<div class="list-item">
+                    <span>${escapeHtml(name)}</span>
+                    <button class="remove-btn" data-index="${origIdx}">删除</button>
+                </div>`;
+            });
+            container.innerHTML = html;
+            container.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.index);
+                    const l = getTeacherList();
+                    if (idx < 0 || idx >= l.length) return;
+                    if (!confirm(`确定删除教师 "${l[idx]}" 吗？`)) return;
+                    l.splice(idx, 1);
+                    if (saveTeacherList(l)) {
+                        showToast('已删除', 'success');
+                        renderTeacherList();
+                        renderClassTable();
+                        populateFilter();
+                    }
+                });
+            });
+        }
+
+        function addTeacherFromCandidate(name) {
+            if (!name || !name.trim()) return;
+            const trimmed = name.trim();
+            const list = getTeacherList();
+            if (list.includes(trimmed)) {
+                showToast(`"${trimmed}" 已存在`, 'warning');
+                return;
+            }
+            list.push(trimmed);
+            if (saveTeacherList(list)) {
+                showToast(`✅ 已添加 "${trimmed}"`, 'success');
+                renderTeacherList();
+                renderClassTable();
+                populateFilter();
+                const input = document.getElementById('newTeacherInput');
+                if (input) input.value = '';
+            }
+        }
+
+        function addTeacherByButton() {
+            const input = document.getElementById('newTeacherInput');
+            const name = input.value.trim();
+            if (!name) { showToast('请输入教师姓名', 'warning'); return; }
+            addTeacherFromCandidate(name);
+        }
+
+        function bindTeacherAddAutocomplete() {
+            const input = document.getElementById('newTeacherInput');
+            const teacherList = getTeacherList();
+            const newInput = bindAutocompleteSimple(input, teacherList, function(val) {
+                addTeacherFromCandidate(val);
+            });
+            newInput.id = 'newTeacherInput';
+            document.getElementById('addTeacherBtn').addEventListener('click', addTeacherByButton);
+            newInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTeacherByButton();
+                }
+            });
+        }
+
+        // ================================================================
+        //  班级管理
+        // ================================================================
+        function renderClassList() {
+            const container = document.getElementById('classListContainer');
+            const list = getClassList();
+            const keyword = document.getElementById('classSearch').value.trim().toLowerCase();
+            const filtered = keyword ? list.filter(c => c.name.toLowerCase().includes(keyword) || c.group.toLowerCase()
+                .includes(keyword)) : list;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="empty-hint">${list.length === 0 ? '暂无班级' : '未找到匹配班级'}</div>`;
+                return;
+            }
+            let html = '';
+            filtered.forEach((c, idx) => {
+                const origIdx = list.indexOf(c);
+                html += `<div class="list-item">
+                    <span>${escapeHtml(c.name)} <span class="tag">${escapeHtml(c.group)}</span></span>
+                    <button class="remove-btn" data-index="${origIdx}">删除</button>
+                </div>`;
+            });
+            container.innerHTML = html;
+            container.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.index);
+                    const l = getClassList();
+                    if (idx < 0 || idx >= l.length) return;
+                    if (!confirm(`确定删除班级 "${l[idx].name}" 吗？`)) return;
+                    l.splice(idx, 1);
+                    if (saveClassList(l)) {
+                        showToast('已删除', 'success');
+                        renderClassList();
+                        populateFilter();
+                        renderClassTable();
+                    }
+                });
+            });
+        }
+
+        function addClass() {
+            const nameInput = document.getElementById('newClassInput');
+            const groupInput = document.getElementById('newClassGroup');
+            const name = nameInput.value.trim();
+            const group = groupInput.value.trim();
+            if (!name) { showToast('请输入班级名称', 'warning'); return; }
+            if (!group) { showToast('请输入级部名称', 'warning'); return; }
+            const list = getClassList();
+            if (list.some(c => c.name === name)) { showToast('该班级已存在', 'warning'); return; }
+            list.push({ name, group });
+            if (saveClassList(list)) {
+                showToast(`已添加 ${name} (${group})`, 'success');
+                nameInput.value = '';
+                groupInput.value = '';
+                renderClassList();
+                populateFilter();
+                renderClassTable();
+            }
+        }
+
+        // ================================================================
+        //  折叠面板控制
+        // ================================================================
+        function initCollapse() {
+            const headers = document.querySelectorAll('.collapse-header');
+            headers.forEach(header => {
+                header.addEventListener('click', function() {
+                    const targetId = this.dataset.target;
+                    const body = document.getElementById(targetId);
+                    const arrow = this.querySelector('.arrow');
+                    if (body) {
+                        body.classList.toggle('open');
+                        if (arrow) {
+                            arrow.classList.toggle('open');
+                            arrow.textContent = body.classList.contains('open') ? '▼' : '▶';
+                        }
+                    }
+                });
+            });
+            document.querySelectorAll('.collapse-body').forEach(el => {
+                el.classList.remove('open');
+            });
+            document.querySelectorAll('.arrow').forEach(el => {
+                el.textContent = '▶';
+                el.classList.remove('open');
+            });
+        }
+
+        // ================================================================
+        //  Tab 切换
+        // ================================================================
+        function initTabs() {
+            const tabs = document.querySelectorAll('.tab-item');
+            const pages = {
+                page1: document.getElementById('page1'),
+                page2: document.getElementById('page2'),
+                page3: document.getElementById('page3')
+            };
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const target = this.dataset.page;
+                    tabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    Object.keys(pages).forEach(k => pages[k].classList.toggle('active', k === target));
+                    if (target === 'page2') { renderHistory();
+                        renderSummary();
+                        renderAbnormal(); }
+                    if (target === 'page3') {
+                        renderTeacherList();
+                        renderClassList();
+                        bindTeacherAddAutocomplete();
+                    }
+                });
+            });
+        }
+
+        // ================================================================
+        //  初始化
+        // ================================================================
+        function initApp() {
+            document.getElementById('date').value = getToday();
+            renderClassTable();
+            renderHistory();
+            renderSummary();
+            renderAbnormal();
+            renderTeacherList();
+            renderClassList();
+            populateFilter();
+            initCollapse();
+
+            bindTeacherAddAutocomplete();
+
+            document.getElementById('teacherSearch').addEventListener('input', renderTeacherList);
+            document.getElementById('classSearch').addEventListener('input', renderClassList);
+
+            document.getElementById('saveBtn').addEventListener('click', handleSave);
+            document.getElementById('exportExcelBtn').addEventListener('click', exportAllExcel);
+            document.getElementById('backupBtn').addEventListener('click', manualBackup);
+            document.getElementById('manualBackupBtn').addEventListener('click', manualBackup);
+            document.getElementById('exportAllBtn').addEventListener('click', exportAllExcel);
+            document.getElementById('restoreBtn').addEventListener('click', restoreData);
+            document.getElementById('clearBtn').addEventListener('click', clearAll);
+            document.getElementById('openFolderBtn').addEventListener('click', openStorageFolder);
+
+            document.getElementById('addClassBtn').addEventListener('click', addClass);
+            document.getElementById('newClassInput').addEventListener('keydown', e => { if (e.key === 'Enter')
+                addClass(); });
+            document.getElementById('newClassGroup').addEventListener('keydown', e => { if (e.key === 'Enter')
+                addClass(); });
+
+            document.getElementById('filterBtn').addEventListener('click', applyFilter);
+            document.getElementById('resetFilterBtn').addEventListener('click', resetFilter);
+
+            document.getElementById('saveEditBtn').addEventListener('click', saveEdit);
+            document.getElementById('cancelEditBtn').addEventListener('click', closeEdit);
+            document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this)
+                closeEdit(); });
+
+            const autoCheck = document.getElementById('autoBackupCheck');
+            autoCheck.addEventListener('change', function() {
+                toggleAutoBackup(this.checked);
+                localStorage.setItem('autoBackupEnabled', this.checked ? '1' : '0');
+            });
+            const savedAuto = localStorage.getItem('autoBackupEnabled');
+            if (savedAuto === '1') {
+                autoCheck.checked = true;
+                toggleAutoBackup(true);
+            }
+
+            initTabs();
+
+            // 检查 XLSX 是否加载成功
+            if (typeof XLSX === 'undefined') {
+                showToast('⚠️ 表格库加载中，请确保网络畅通，稍后重试导出功能', 'warning', 5000);
+            } else {
+                showToast('✅ 系统已就绪 · 全量版', 'success', 2000);
+            }
+        }
+
+        // ================================================================
+        //  启动 & 数据迁移
+        // ================================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!localStorage.getItem(VERSION_KEY)) localStorage.setItem(VERSION_KEY, APP_VERSION);
+            else if (localStorage.getItem(VERSION_KEY) !== APP_VERSION) {
+                localStorage.setItem(VERSION_KEY, APP_VERSION);
+                // 迁移旧数据
+                const oldTeachers = localStorage.getItem('teacherList');
+                if (oldTeachers) {
+                    try {
+                        const parsed = JSON.parse(oldTeachers);
+                        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0]
+                            .name) {
+                            const migrated = parsed.map(t => t.name);
+                            localStorage.setItem(TEACHER_LIST_KEY, JSON.stringify(migrated));
+                        } else if (Array.isArray(parsed) && typeof parsed[0] === 'string') {
+                            localStorage.setItem(TEACHER_LIST_KEY, JSON.stringify(parsed));
+                        }
+                        localStorage.removeItem('teacherList');
+                    } catch (_) {}
+                }
+                const oldClasses = localStorage.getItem('classList');
+                if (oldClasses) {
+                    try {
+                        const parsed = JSON.parse(oldClasses);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            if (typeof parsed[0] === 'string') {
+                                const migrated = parsed.map(name => ({ name, group: '高三2级部' }));
+                                localStorage.setItem(CLASS_LIST_KEY, JSON.stringify(migrated));
+                            } else {
+                                localStorage.setItem(CLASS_LIST_KEY, JSON.stringify(parsed));
+                            }
+                        }
+                        localStorage.removeItem('classList');
+                    } catch (_) {}
+                }
+                if (!localStorage.getItem(TEACHER_LIST_KEY)) {
+                    localStorage.setItem(TEACHER_LIST_KEY, JSON.stringify(DEFAULT_TEACHERS));
+                }
+                if (!localStorage.getItem(CLASS_LIST_KEY)) {
+                    localStorage.setItem(CLASS_LIST_KEY, JSON.stringify(DEFAULT_CLASSES));
+                }
+            }
+            initApp();
+        });
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            if (!localStorage.getItem(VERSION_KEY)) {
+                localStorage.setItem(VERSION_KEY, APP_VERSION);
+            }
+            initApp();
+        }
+    </script>
+</body>
+</html>
