@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>巡课数据合并工具 · 缓存与自动恢复</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft Yahei", sans-serif;
+            padding: 16px 12px 40px;
+            color: #0f172a;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        .app-wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .app-header {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px 20px 16px;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            text-align: center;
+            border-bottom: 4px solid #8b5cf6;
+        }
+        .app-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .app-header h1 small {
+            font-size: 14px;
+            font-weight: 400;
+            color: #94a3b8;
+            display: block;
+            margin-top: 2px;
+        }
+        .app-header .sub {
+            font-size: 14px;
+            color: #64748b;
+            margin-top: 6px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 18px 16px 20px;
+            margin-bottom: 16px;
+            border: 1px solid #eef2f6;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+        }
+        .card-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+        }
+        .card-title .badge {
+            background: #8b5cf6;
+            color: #fff;
+            font-size: 12px;
+            border-radius: 20px;
+            padding: 0 12px;
+            line-height: 22px;
+            font-weight: 500;
+            margin-left: auto;
+        }
+        .badge.green {
+            background: #059669;
+        }
+        .badge.orange {
+            background: #f59e0b;
+        }
+        .badge.red {
+            background: #dc2626;
+        }
+        .file-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .file-tag {
+            background: #f1f5f9;
+            border-radius: 20px;
+            padding: 4px 14px 4px 16px;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+        }
+        .file-tag .remove {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .file-tag .remove:hover {
+            color: #dc2626;
+        }
+        .file-tag .size {
+            color: #94a3b8;
+            font-size: 11px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+        .stat-item {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 14px 12px;
+            text-align: center;
+            border: 1px solid #eef2f6;
+        }
+        .stat-item .num {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+        .stat-item .label {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .stat-item.purple .num {
+            color: #8b5cf6;
+        }
+        .stat-item.green .num {
+            color: #059669;
+        }
+        .stat-item.orange .num {
+            color: #f59e0b;
+        }
+        .stat-item.blue .num {
+            color: #3b82f6;
+        }
+        .stat-item.red .num {
+            color: #dc2626;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -4px;
+            padding: 0 4px;
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #eef2f6;
+            border-radius: 10px;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 700px;
+        }
+        .data-table th,
+        .data-table td {
+            border: 1px solid #e2e8f0;
+            padding: 6px 6px;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .data-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+            font-size: 12px;
+            color: #475569;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .data-table .empty-row td {
+            padding: 28px 10px;
+            color: #94a3b8;
+            font-size: 14px;
+            text-align: center;
+        }
+        .highlight-abnormal {
+            color: #dc2626;
+            font-weight: 600;
+        }
+        .summary-table {
+            min-width: 500px;
+        }
+        .summary-table .total-cell {
+            color: #dc2626;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        button {
+            padding: 12px 22px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.15s;
+            touch-action: manipulation;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        button:active {
+            transform: scale(0.97);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background: #8b5cf6;
+            color: #fff;
+        }
+        .btn-primary:active {
+            background: #7c3aed;
+        }
+        .btn-success {
+            background: #059669;
+            color: #fff;
+        }
+        .btn-success:active {
+            background: #047857;
+        }
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+        }
+        .btn-gray {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        .btn-outline {
+            background: transparent;
+            color: #8b5cf6;
+            border: 1.5px solid #8b5cf6;
+        }
+        .toast-wrap {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+            width: 90%;
+            max-width: 420px;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: center;
+        }
+        .toast-item {
+            pointer-events: auto;
+            padding: 14px 20px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+            width: 100%;
+            text-align: center;
+            animation: fadeDown 0.25s ease;
+        }
+        .toast-success {
+            background: #059669;
+        }
+        .toast-error {
+            background: #dc2626;
+        }
+        .toast-warning {
+            background: #f59e0b;
+        }
+        .toast-info {
+            background: #8b5cf6;
+        }
+        @keyframes fadeDown {
+            from {
+                opacity: 0;
+                transform: translateY(-16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .toast-item.hide {
+            animation: fadeUp 0.25s ease forwards;
+        }
+        @keyframes fadeUp {
+            to {
+                opacity: 0;
+                transform: translateY(-16px);
+            }
+        }
+        .progress-wrap {
+            margin-top: 12px;
+            background: #eef2f6;
+            border-radius: 20px;
+            height: 6px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-wrap.active {
+            display: block;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #8b5cf6;
+            border-radius: 20px;
+            transition: width 0.3s;
+        }
+        .source-tag {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 11px;
+            border-radius: 4px;
+            padding: 0 8px;
+            line-height: 20px;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .text-muted {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .data-count-hint {
+            font-size: 13px;
+            color: #475569;
+            padding: 6px 0 10px 0;
+            text-align: right;
+            border-bottom: 1px solid #f1f5f9;
+            margin-bottom: 10px;
+        }
+        .week-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+            padding: 8px 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        .week-filter .week-btn {
+            padding: 4px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.15s;
+        }
+        .week-filter .week-btn.active {
+            background: #8b5cf6;
+            color: #fff;
+            border-color: #8b5cf6;
+        }
+        .week-filter .week-btn:hover {
+            background: #f1f5f9;
+        }
+        .week-filter .week-btn.active:hover {
+            background: #7c3aed;
+        }
+        .cache-info {
+            font-size: 13px;
+            color: #64748b;
+            padding: 8px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .cache-info strong {
+            color: #0f172a;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-box {
+            background: #fff;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 16px;
+            padding: 24px 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+        .modal-box h3 {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #0f172a;
+        }
+        .modal-box .btn-row {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px 8px 30px;
+            }
+            .app-header h1 {
+                font-size: 20px;
+            }
+            .card {
+                padding: 14px 10px 16px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .stat-item .num {
+                font-size: 22px;
+            }
+            .data-table {
+                font-size: 12px;
+                min-width: 600px;
+            }
+            button {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+            .week-filter .week-btn {
+                font-size: 12px;
+                padding: 2px 10px;
+            }
+            .cache-info {
+                font-size: 12px;
+            }
+            .file-list {
+                margin-top: 8px;
+            }
+            .file-tag {
+                font-size: 12px;
+                padding: 2px 10px 2px 12px;
+            }
+        }
+        #fileInput {
+            display: none;
+        }
+        .upload-hint {
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast-wrap" id="toastWrap"></div>
+
+    <!-- 恢复缓存模态框 -->
+    <div class="modal-overlay" id="restoreModal">
+        <div class="modal-box">
+            <h3>📦 发现缓存数据</h3>
+            <p style="text-align:center;color:#475569;margin-bottom:12px;">
+                检测到上次未关闭时自动保存的缓存数据，是否恢复？
+            </p>
+            <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px;color:#0f172a;" id="restoreModalInfo">
+                加载中...
+            </div>
+            <div class="btn-row">
+                <button class="btn-primary" id="restoreConfirmBtn">✅ 恢复缓存</button>
+                <button class="btn-gray" id="restoreCancelBtn">❌ 忽略</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-wrap">
+
+        <header class="app-header">
+            <h1>
+                📊 巡课数据合并工具
+                <small>自动缓存 · 去重合并 · 周筛选导出</small>
+            </h1>
+            <div class="sub">
+                支持导入多个 Excel 文件，自动合并去重，<strong>缓存自动保存</strong>，重启恢复，导入新数据自动去重
+            </div>
+        </header>
+
+        <!-- 上传区 -->
+        <div class="card">
+            <div class="card-title">
+                📤 上传数据文件
+                <span class="badge" id="fileCountBadge">0 个文件</span>
+            </div>
+            <div class="file-list" id="fileList"></div>
+            <div class="progress-wrap" id="progressWrap">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn-primary" id="uploadBtn">📤 选择文件</button>
+                <button class="btn-primary" id="mergeBtn" disabled>🔄 合并所有数据</button>
+                <button class="btn-gray" id="clearFilesBtn">🗑️ 清空文件</button>
+                <input type="file" id="fileInput" accept=".xlsx,.xls" multiple />
+            </div>
+            <div class="upload-hint">💡 支持 .xlsx .xls 格式，可多选，上传后自动合并去重</div>
+        </div>
+
+        <!-- 数据概览 -->
+        <div class="card" id="statsCard" style="display:none;">
+            <div class="card-title">
+                📈 数据概览
+                <span class="badge green" id="sourceCount">0 个来源</span>
+            </div>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-item purple"><div class="num" id="statRecords">0</div><div class="label">📋 总记录数</div></div>
+                <div class="stat-item blue"><div class="num" id="statTeachers">0</div><div class="label">👨‍🏫 授课教师</div></div>
+                <div class="stat-item green"><div class="num" id="statDays">0</div><div class="label">📅 覆盖日期</div></div>
+                <div class="stat-item orange"><div class="num" id="statClasses">0</div><div class="label">🏫 班级数</div></div>
+                <div class="stat-item red"><div class="num" id="statAbnormal">0</div><div class="label">⚠️ 异常记录</div></div>
+            </div>
+        </div>
+
+        <!-- 完整数据预览 -->
+        <div class="card" id="previewCard" style="display:none;">
+            <div class="card-title">
+                👁️ 合并数据明细（按时间降序）
+                <span class="badge" id="previewCount">0 条</span>
+            </div>
+            <div class="data-count-hint" id="dataCountHint">共 0 条记录</div>
+            <div class="table-wrap" id="previewTableWrap">
+                <table class="data-table" id="previewTable">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>日期</th><th>星期</th><th>周数</th><th>节次</th><th>班级</th>
+                            <th>授课教师</th><th>巡课教师</th><th>巡课情况</th><th>备注</th><th>巡课时间</th><th>来源</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 总汇总卡片（含周筛选） -->
+        <div class="card" id="summaryCard" style="display:none;">
+            <div class="card-title">
+                📊 教师课时汇总
+                <span class="badge green" id="summaryTeacherCount">0 人</span>
+            </div>
+            <div class="week-filter" id="weekFilterContainer"></div>
+            <div class="table-wrap" id="summaryWrap" style="max-height:400px;"></div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:6px;text-align:center;">
+                💡 点击上方周数筛选，表格自动切换为对应周数据
+            </div>
+        </div>
+
+        <!-- 异常汇总 -->
+        <div class="card" id="abnormalCard" style="display:none;">
+            <div class="card-title">
+                ⚠️ 巡课异常汇总
+                <span class="badge orange" id="abnormalCount">0 条</span>
+            </div>
+            <div class="table-wrap" id="abnormalWrap" style="max-height:300px;"></div>
+        </div>
+
+        <!-- 缓存与导出 -->
+        <div class="card" id="exportCard" style="display:none;">
+            <div class="card-title">
+                💾 缓存与导出
+                <span class="badge">自动保存</span>
+            </div>
+            <div class="cache-info" id="cacheInfo">
+                <span>💾 缓存状态：<strong id="cacheStatus">未缓存</strong></span>
+                <span>🕒 更新时间：<strong id="cacheTime">-</strong></span>
+                <span>📦 记录数：<strong id="cacheCount">0</strong></span>
+            </div>
+            <div class="btn-group" style="margin-top:8px;">
+                <button class="btn-primary" id="manualSaveBtn">💾 手动保存缓存</button>
+                <button class="btn-danger" id="clearCacheBtn">🗑️ 清空缓存</button>
+                <button class="btn-success" id="exportBtn">📥 导出合并 Excel</button>
+            </div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:6px;text-align:center;">
+                💡 页面关闭/刷新时自动保存缓存，重新打开时提示恢复 · 导入新数据自动去重
+            </div>
+        </div>
+
+        <div class="text-center text-muted" style="padding:12px 0 4px;font-size:12px;">
+            巡课数据合并工具 v7.2 · 导入按钮移至底部 · 自动缓存 · 去重合并
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        //  巡课数据合并工具 v7.2
+        //  将上传按钮移至按钮组，精简布局
+        // ================================================================
+
+        var ALL_JIECI = [
+            '早读', '上午第一节课', '上午第二节课', '上午第三节课',
+            '上午第四节课', '上午第五节课', '午休', '下午第一节课',
+            '下午第二节课', '下午第三节课', '下午自习', '晚自习'
+        ];
+
+        // ---------- 缓存键 ----------
+        var MERGE_CACHE_KEY = 'mergeDataCache_v7';
+        var CACHE_META_KEY = 'mergeCacheMeta_v7';
+
+        var uploadedFiles = [];
+        var mergedData = [];
+        var isMerging = false;
+        var currentWeek = 'all';
+
+        // ---------- Toast ----------
+        function showToast(msg, type, dur) {
+            type = type || 'info';
+            dur = dur || 3000;
+            var wrap = document.getElementById('toastWrap');
+            var el = document.createElement('div');
+            el.className = 'toast-item toast-' + type;
+            el.textContent = msg;
+            wrap.appendChild(el);
+            setTimeout(function() {
+                el.classList.add('hide');
+                setTimeout(function() { el.remove(); }, 250);
+            }, dur);
+        }
+
+        // ---------- 工具 ----------
+        function escapeHtml(s) {
+            if (!s) return '';
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        function safeString(v) {
+            if (v === null || v === undefined) return '';
+            return String(v).trim();
+        }
+
+        function normalizeDate(v) {
+            var s = safeString(v);
+            if (!s) return '';
+            if (!isNaN(s) && s.length >= 5) {
+                var num = parseFloat(s);
+                if (num > 30000 && num < 50000) {
+                    var d = new Date((num - 25569) * 86400 * 1000);
+                    var m = String(d.getMonth() + 1).padStart(2, '0');
+                    var day = String(d.getDate()).padStart(2, '0');
+                    return d.getFullYear() + '-' + m + '-' + day;
+                }
+            }
+            var match = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+            if (match) {
+                var y = match[1],
+                    m = match[2].padStart(2, '0'),
+                    d = match[3].padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
+            var match2 = s.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+            if (match2) {
+                var m2 = match2[1].padStart(2, '0'),
+                    d2 = match2[2].padStart(2, '0'),
+                    y2 = match2[3];
+                return y2 + '-' + m2 + '-' + d2;
+            }
+            return s;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + 'B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + 'KB';
+            return (bytes / 1048576).toFixed(1) + 'MB';
+        }
+
+        function getRecordKey(row) {
+            return row.date + '||' + row.weekNum + '||' + row.jieci + '||' +
+                row.banji + '||' + row.teacher + '||' + row.xunkeTeacher + '||' +
+                row.remark + '||' + row.remarkDetail;
+        }
+
+        // ---------- 缓存管理 ----------
+        function saveCache() {
+            if (!mergedData || mergedData.length === 0) {
+                localStorage.setItem(MERGE_CACHE_KEY, JSON.stringify([]));
+                localStorage.setItem(CACHE_META_KEY, JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    count: 0
+                }));
+                updateCacheInfo();
+                return;
+            }
+            try {
+                localStorage.setItem(MERGE_CACHE_KEY, JSON.stringify(mergedData));
+                localStorage.setItem(CACHE_META_KEY, JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    count: mergedData.length
+                }));
+                updateCacheInfo();
+                showToast('💾 缓存已保存（' + mergedData.length + ' 条记录）', 'success', 1500);
+            } catch (e) {
+                console.error('保存缓存失败:', e);
+                showToast('缓存保存失败: ' + e.message, 'error');
+            }
+        }
+
+        function loadCache() {
+            try {
+                var raw = localStorage.getItem(MERGE_CACHE_KEY);
+                var metaRaw = localStorage.getItem(CACHE_META_KEY);
+                if (!raw) return null;
+                var data = JSON.parse(raw);
+                var meta = metaRaw ? JSON.parse(metaRaw) : null;
+                if (!Array.isArray(data)) return null;
+                return {
+                    data: data,
+                    meta: meta
+                };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function clearCache() {
+            localStorage.removeItem(MERGE_CACHE_KEY);
+            localStorage.removeItem(CACHE_META_KEY);
+            updateCacheInfo();
+            showToast('缓存已清空', 'info');
+        }
+
+        function updateCacheInfo() {
+            var metaRaw = localStorage.getItem(CACHE_META_KEY);
+            var dataRaw = localStorage.getItem(MERGE_CACHE_KEY);
+            var status = document.getElementById('cacheStatus');
+            var time = document.getElementById('cacheTime');
+            var count = document.getElementById('cacheCount');
+
+            if (!dataRaw) {
+                status.textContent = '未缓存';
+                time.textContent = '-';
+                count.textContent = '0';
+                return;
+            }
+            try {
+                var meta = metaRaw ? JSON.parse(metaRaw) : null;
+                var data = JSON.parse(dataRaw);
+                if (Array.isArray(data) && data.length > 0) {
+                    status.textContent = '✅ 已缓存';
+                    status.style.color = '#059669';
+                } else {
+                    status.textContent = '⚠️ 空缓存';
+                    status.style.color = '#f59e0b';
+                }
+                if (meta && meta.timestamp) {
+                    var d = new Date(meta.timestamp);
+                    time.textContent = d.toLocaleString('zh-CN');
+                } else {
+                    time.textContent = '未知';
+                }
+                count.textContent = data ? data.length : 0;
+            } catch (e) {
+                status.textContent = '❌ 损坏';
+                status.style.color = '#dc2626';
+                time.textContent = '-';
+                count.textContent = '0';
+            }
+        }
+
+        function restoreCacheData(cachedData) {
+            if (!cachedData || cachedData.length === 0) {
+                showToast('缓存为空，无需恢复', 'info');
+                return false;
+            }
+
+            var current = mergedData || [];
+            var combined = current.concat(cachedData);
+            var seen = new Set();
+            var unique = [];
+            combined.forEach(function(row) {
+                var key = getRecordKey(row);
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    unique.push(row);
+                }
+            });
+
+            mergedData = unique;
+            mergedData.sort(function(a, b) {
+                if (a.date > b.date) return -1;
+                if (a.date < b.date) return 1;
+                var timeA = a.recordTime || '';
+                var timeB = b.recordTime || '';
+                if (timeA > timeB) return -1;
+                if (timeA < timeB) return 1;
+                return a.banji.localeCompare(b.banji);
+            });
+
+            renderStats();
+            renderPreview();
+            renderSummaryWithWeekFilter();
+            renderAbnormal();
+            showResults();
+            saveCache();
+            showToast('✅ 缓存恢复成功，合并后共 ' + mergedData.length + ' 条记录', 'success', 3000);
+            return true;
+        }
+
+        // ---------- 解析 Excel ----------
+        function parseExcelFile(file) {
+            return new Promise(function(resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        var data = new Uint8Array(e.target.result);
+                        var workbook = XLSX.read(data, { type: 'array' });
+                        var sheetName = null;
+                        var sheetNames = workbook.SheetNames;
+                        for (var i = 0; i < sheetNames.length; i++) {
+                            if (sheetNames[i].includes('明细') || sheetNames[i].includes('巡课') || sheetNames[i]
+                                .includes('Detail')) {
+                                sheetName = sheetNames[i];
+                                break;
+                            }
+                        }
+                        if (!sheetName) sheetName = sheetNames[0];
+
+                        var ws = workbook.Sheets[sheetName];
+                        var json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+                        if (!json || json.length === 0) {
+                            reject(new Error('工作表 "' + sheetName + '" 为空'));
+                            return;
+                        }
+
+                        var rows = [];
+                        var headers = Object.keys(json[0]);
+                        var lowerHeaders = headers.map(function(h) { return h.toLowerCase(); });
+
+                        function findKey(keys) {
+                            for (var i = 0; i < keys.length; i++) {
+                                var idx = lowerHeaders.indexOf(keys[i].toLowerCase());
+                                if (idx !== -1) return headers[idx];
+                            }
+                            return null;
+                        }
+
+                        var colMap = {
+                            date: findKey(['日期', 'date', '时间', '日']),
+                            weekNum: findKey(['周数', '周', 'week', 'weeknum']),
+                            jieci: findKey(['节次', '节', '课节', '时段']),
+                            banji: findKey(['班级', '班', 'class', 'classname']),
+                            teacher: findKey(['授课教师', '教师', '老师', 'teacher', '授课老师']),
+                            xunkeTeacher: findKey(['巡课教师', '巡课老师', '检查人', '巡课人']),
+                            remark: findKey(['巡课情况', '情况', '状态', 'remark', 'status']),
+                            remarkDetail: findKey(['备注', '说明', 'detail', 'note', 'remarks']),
+                            dayOfWeek: findKey(['星期', 'weekday', 'dayofweek']),
+                            recordTime: findKey(['巡课时间', 'recordtime', '时间', '录入时间'])
+                        };
+
+                        if (!colMap.date && headers.length > 1) colMap.date = headers[1];
+                        if (!colMap.weekNum && headers.length > 2) colMap.weekNum = headers[2];
+                        if (!colMap.jieci && headers.length > 3) colMap.jieci = headers[3];
+                        if (!colMap.banji && headers.length > 4) colMap.banji = headers[4];
+                        if (!colMap.teacher && headers.length > 5) colMap.teacher = headers[5];
+                        if (!colMap.xunkeTeacher && headers.length > 6) colMap.xunkeTeacher = headers[6];
+                        if (!colMap.remark && headers.length > 7) colMap.remark = headers[7];
+                        if (!colMap.remarkDetail && headers.length > 8) colMap.remarkDetail = headers[8];
+                        if (!colMap.dayOfWeek && headers.length > 9) colMap.dayOfWeek = headers[9];
+                        if (!colMap.recordTime && headers.length > 10) colMap.recordTime = headers[10];
+
+                        json.forEach(function(row) {
+                            var dateVal = colMap.date ? safeString(row[colMap.date]) : '';
+                            var teacherVal = colMap.teacher ? safeString(row[colMap.teacher]) : '';
+                            if (!teacherVal) return;
+
+                            var dayVal = colMap.dayOfWeek ? safeString(row[colMap.dayOfWeek]) : '';
+                            var timeVal = colMap.recordTime ? safeString(row[colMap.recordTime]) : '';
+
+                            rows.push({
+                                date: normalizeDate(dateVal) || dateVal,
+                                weekNum: colMap.weekNum ? safeString(row[colMap.weekNum]) : '',
+                                jieci: colMap.jieci ? safeString(row[colMap.jieci]) : '',
+                                banji: colMap.banji ? safeString(row[colMap.banji]) : '',
+                                teacher: teacherVal,
+                                xunkeTeacher: colMap.xunkeTeacher ? safeString(row[colMap.xunkeTeacher]) : '',
+                                remark: colMap.remark ? safeString(row[colMap.remark]) : '正常',
+                                remarkDetail: colMap.remarkDetail ? safeString(row[colMap.remarkDetail]) : '',
+                                dayOfWeek: dayVal,
+                                recordTime: timeVal,
+                                _source: file.name
+                            });
+                        });
+
+                        if (rows.length === 0) {
+                            reject(new Error('未找到有效的巡课数据，请检查列名'));
+                            return;
+                        }
+
+                        resolve({
+                            name: file.name,
+                            size: file.size,
+                            rows: rows,
+                            rowCount: rows.length,
+                            parsed: true
+                        });
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = function() { reject(new Error('读取文件失败')); };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // ---------- 处理上传（合并到现有数据，去重） ----------
+        function handleFiles(files) {
+            var validFiles = [];
+            for (var i = 0; i < files.length; i++) {
+                var f = files[i];
+                var ext = f.name.split('.').pop().toLowerCase();
+                if (ext === 'xlsx' || ext === 'xls') validFiles.push(f);
+                else showToast('⚠️ 跳过不支持的文件: ' + f.name, 'warning', 2500);
+            }
+            if (validFiles.length === 0) {
+                showToast('请上传 .xlsx 或 .xls 格式的文件', 'warning');
+                return;
+            }
+
+            var progressWrap = document.getElementById('progressWrap');
+            var progressBar = document.getElementById('progressBar');
+            progressWrap.classList.add('active');
+            progressBar.style.width = '0%';
+
+            var total = validFiles.length;
+            var completed = 0;
+            var errors = [];
+            var allNewRows = [];
+
+            validFiles.forEach(function(file) {
+                parseExcelFile(file)
+                    .then(function(result) {
+                        if (result.rows && result.rows.length > 0) {
+                            allNewRows = allNewRows.concat(result.rows);
+                        }
+                        uploadedFiles.push(result);
+                        completed++;
+                        progressBar.style.width = (completed / total * 100) + '%';
+                        if (completed === total) {
+                            progressWrap.classList.remove('active');
+                            updateFileList();
+
+                            if (allNewRows.length === 0) {
+                                showToast('没有有效数据可合并', 'warning');
+                                return;
+                            }
+
+                            var combined = (mergedData || []).concat(allNewRows);
+                            var seen = new Set();
+                            var unique = [];
+                            combined.forEach(function(row) {
+                                var key = getRecordKey(row);
+                                if (!seen.has(key)) {
+                                    seen.add(key);
+                                    unique.push(row);
+                                }
+                            });
+
+                            mergedData = unique;
+                            mergedData.sort(function(a, b) {
+                                if (a.date > b.date) return -1;
+                                if (a.date < b.date) return 1;
+                                var timeA = a.recordTime || '';
+                                var timeB = b.recordTime || '';
+                                if (timeA > timeB) return -1;
+                                if (timeA < timeB) return 1;
+                                return a.banji.localeCompare(b.banji);
+                            });
+
+                            saveCache();
+                            renderStats();
+                            renderPreview();
+                            renderSummaryWithWeekFilter();
+                            renderAbnormal();
+                            showResults();
+
+                            showToast('✅ 合并完成！新增 ' + allNewRows.length + ' 条，合并后共 ' + mergedData.length +
+                                ' 条记录', 'success', 3000);
+                        }
+                    })
+                    .catch(function(err) {
+                        errors.push(file.name + ': ' + err.message);
+                        completed++;
+                        progressBar.style.width = (completed / total * 100) + '%';
+                        if (completed === total) {
+                            progressWrap.classList.remove('active');
+                            updateFileList();
+                            if (errors.length > 0) {
+                                showToast('⚠️ 部分文件解析失败: ' + errors.join('; '), 'warning', 4000);
+                            }
+                            if (allNewRows.length > 0) {
+                                var combined = (mergedData || []).concat(allNewRows);
+                                var seen = new Set();
+                                var unique = [];
+                                combined.forEach(function(row) {
+                                    var key = getRecordKey(row);
+                                    if (!seen.has(key)) {
+                                        seen.add(key);
+                                        unique.push(row);
+                                    }
+                                });
+                                mergedData = unique;
+                                mergedData.sort(function(a, b) {
+                                    if (a.date > b.date) return -1;
+                                    if (a.date < b.date) return 1;
+                                    var timeA = a.recordTime || '';
+                                    var timeB = b.recordTime || '';
+                                    if (timeA > timeB) return -1;
+                                    if (timeA < timeB) return 1;
+                                    return a.banji.localeCompare(b.banji);
+                                });
+                                saveCache();
+                                renderStats();
+                                renderPreview();
+                                renderSummaryWithWeekFilter();
+                                renderAbnormal();
+                                showResults();
+                                showToast('✅ 合并完成，共 ' + mergedData.length + ' 条记录', 'success', 3000);
+                            }
+                        }
+                    });
+            });
+        }
+
+        // ---------- 文件列表更新 ----------
+        function updateFileList() {
+            var container = document.getElementById('fileList');
+            var badge = document.getElementById('fileCountBadge');
+
+            badge.textContent = uploadedFiles.length + ' 个文件';
+
+            if (uploadedFiles.length === 0) {
+                container.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:4px 0;">暂未上传文件</div>';
+                return;
+            }
+
+            var html = '';
+            uploadedFiles.forEach(function(f, idx) {
+                var statusIcon = f.parsed ? '✅' : '⏳';
+                var statusText = f.parsed ? (f.rowCount + ' 条') : '待解析';
+                html += '<span class="file-tag">' +
+                    '📄 ' + escapeHtml(f.name) +
+                    ' <span class="size">(' + formatFileSize(f.size) + ')</span>' +
+                    ' <span class="status">' + statusIcon + ' ' + statusText + '</span>' +
+                    '<button class="remove" data-idx="' + idx + '" title="移除">✕</button>' +
+                    '</span>';
+            });
+            container.innerHTML = html;
+
+            container.querySelectorAll('.remove').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var idx = parseInt(this.dataset.idx);
+                    uploadedFiles.splice(idx, 1);
+                    updateFileList();
+                    showToast('已移除文件，但数据已合并保留', 'info', 1500);
+                });
+            });
+        }
+
+        // ---------- 隐藏/显示结果 ----------
+        function hideResults() {
+            document.getElementById('statsCard').style.display = 'none';
+            document.getElementById('previewCard').style.display = 'none';
+            document.getElementById('summaryCard').style.display = 'none';
+            document.getElementById('abnormalCard').style.display = 'none';
+            document.getElementById('exportCard').style.display = 'none';
+        }
+
+        function showResults() {
+            document.getElementById('statsCard').style.display = 'block';
+            document.getElementById('previewCard').style.display = 'block';
+            document.getElementById('summaryCard').style.display = 'block';
+            document.getElementById('abnormalCard').style.display = 'block';
+            document.getElementById('exportCard').style.display = 'block';
+        }
+
+        // ---------- 渲染统计 ----------
+        function renderStats() {
+            var data = mergedData;
+            document.getElementById('statRecords').textContent = data.length;
+            document.getElementById('sourceCount').textContent = uploadedFiles.length + ' 个来源';
+
+            var teachers = new Set(),
+                days = new Set(),
+                classes = new Set(),
+                abnormal = 0;
+            data.forEach(function(row) {
+                if (row.teacher) teachers.add(row.teacher);
+                if (row.date) days.add(row.date);
+                if (row.banji) classes.add(row.banji);
+                if (row.remark && row.remark !== '正常') abnormal++;
+            });
+            document.getElementById('statTeachers').textContent = teachers.size;
+            document.getElementById('statDays').textContent = days.size;
+            document.getElementById('statClasses').textContent = classes.size;
+            document.getElementById('statAbnormal').textContent = abnormal;
+        }
+
+        // ---------- 渲染预览 ----------
+        function renderPreview() {
+            var tbody = document.getElementById('previewBody');
+            var countEl = document.getElementById('previewCount');
+            var hintEl = document.getElementById('dataCountHint');
+
+            countEl.textContent = mergedData.length + ' 条';
+            hintEl.textContent = '共 ' + mergedData.length + ' 条记录（按日期+时间降序）';
+
+            if (mergedData.length === 0) {
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="12">暂无数据</td></tr>';
+                return;
+            }
+
+            var html = '';
+            mergedData.forEach(function(row, idx) {
+                var isAbnormal = row.remark && row.remark !== '正常';
+                var remarkDisplay = isAbnormal ? '<span class="highlight-abnormal">' + escapeHtml(row.remark) +
+                    '</span>' : escapeHtml(row.remark);
+                html += '<tr>' +
+                    '<td>' + (idx + 1) + '</td>' +
+                    '<td>' + escapeHtml(row.date) + '</td>' +
+                    '<td>' + escapeHtml(row.dayOfWeek) + '</td>' +
+                    '<td>' + escapeHtml(row.weekNum) + '</td>' +
+                    '<td>' + escapeHtml(row.jieci) + '</td>' +
+                    '<td>' + escapeHtml(row.banji) + '</td>' +
+                    '<td>' + escapeHtml(row.teacher) + '</td>' +
+                    '<td>' + escapeHtml(row.xunkeTeacher) + '</td>' +
+                    '<td>' + remarkDisplay + '</td>' +
+                    '<td>' + escapeHtml(row.remarkDetail || '') + '</td>' +
+                    '<td style="font-size:12px;color:#475569;">' + escapeHtml(row.recordTime) + '</td>' +
+                    '<td><span class="source-tag">' + escapeHtml(row._source || '') + '</span></td>' +
+                    '</tr>';
+            });
+            tbody.innerHTML = html;
+        }
+
+        // ---------- 总汇总（含周筛选） ----------
+        function renderSummaryWithWeekFilter() {
+            var data = mergedData;
+            var filterContainer = document.getElementById('weekFilterContainer');
+            var wrap = document.getElementById('summaryWrap');
+            var countEl = document.getElementById('summaryTeacherCount');
+
+            if (data.length === 0) {
+                filterContainer.innerHTML = '';
+                wrap.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:16px 0;">暂无数据</p>';
+                countEl.textContent = '0 人';
+                return;
+            }
+
+            var weeksSet = new Set();
+            data.forEach(function(item) {
+                if (item.weekNum) weeksSet.add(String(item.weekNum));
+            });
+            var sortedWeeks = Array.from(weeksSet).sort(function(a, b) {
+                var na = parseInt(a),
+                    nb = parseInt(b);
+                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                return String(a).localeCompare(String(b));
+            });
+
+            var filterHtml = '<button class="week-btn' + (currentWeek === 'all' ? ' active' : '') + '" data-week="all">全部</button>';
+            sortedWeeks.forEach(function(w) {
+                filterHtml += '<button class="week-btn' + (currentWeek === w ? ' active' : '') + '" data-week="' + escapeHtml(
+                    w) + '">第' + escapeHtml(w) + '周</button>';
+            });
+            filterContainer.innerHTML = filterHtml;
+
+            filterContainer.querySelectorAll('.week-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var week = this.dataset.week;
+                    currentWeek = week;
+                    filterContainer.querySelectorAll('.week-btn').forEach(function(b) {
+                        b.classList.toggle('active', b.dataset.week === week);
+                    });
+                    renderSummaryTable();
+                });
+            });
+
+            renderSummaryTable();
+
+            function renderSummaryTable() {
+                var filteredData = data;
+                var weekLabel = '全部周';
+                if (currentWeek !== 'all') {
+                    filteredData = data.filter(function(item) { return String(item.weekNum) === currentWeek; });
+                    weekLabel = '第' + currentWeek + '周';
+                }
+
+                if (filteredData.length === 0) {
+                    wrap.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:16px 0;">该周无数据</p>';
+                    countEl.textContent = '0 人（' + weekLabel + '）';
+                    return;
+                }
+
+                var stat = {};
+                filteredData.forEach(function(item) {
+                    var t = item.teacher || '未知';
+                    if (!stat[t]) {
+                        stat[t] = Object.fromEntries(ALL_JIECI.map(function(j) { return [j, 0]; }));
+                    }
+                    var j = item.jieci || '未分类';
+                    if (ALL_JIECI.indexOf(j) !== -1) {
+                        stat[t][j] = (stat[t][j] || 0) + 1;
+                    }
+                });
+
+                var teacherCount = Object.keys(stat).length;
+                countEl.textContent = teacherCount + ' 人（' + weekLabel + '）';
+
+                var html =
+                    '<table class="data-table summary-table"><thead><tr><th>教师</th>' +
+                    ALL_JIECI.map(function(j) { return '<th>' + j + '</th>'; }).join('') +
+                    '<th>总课时</th></tr></thead><tbody>';
+
+                Object.keys(stat).sort().forEach(function(t) {
+                    var total = 0;
+                    html += '<tr><td style="font-weight:600">' + escapeHtml(t) + '</td>';
+                    ALL_JIECI.forEach(function(j) {
+                        var n = stat[t][j] || 0;
+                        total += n;
+                        html += '<td>' + n + '</td>';
+                    });
+                    html += '<td class="total-cell">' + total + '</td></tr>';
+                });
+                html += '</tbody></table>';
+                wrap.innerHTML = html;
+            }
+        }
+
+        // ---------- 渲染异常 ----------
+        function renderAbnormal() {
+            var data = mergedData;
+            var wrap = document.getElementById('abnormalWrap');
+            var countEl = document.getElementById('abnormalCount');
+
+            var abnormal = data.filter(function(i) { return i.remark && i.remark !== '正常'; });
+            countEl.textContent = abnormal.length + ' 条';
+
+            if (abnormal.length === 0) {
+                wrap.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:12px 0;">✅ 暂无异常记录</p>';
+                return;
+            }
+
+            var html =
+                '<table class="data-table"><thead><tr><th>日期</th><th>星期</th><th>周数</th><th>节次</th><th>班级</th><th>授课教师</th><th>巡课教师</th><th>异常情况</th><th>备注</th><th>来源</th></tr></thead><tbody>';
+            abnormal.forEach(function(row) {
+                html += '<tr>' +
+                    '<td>' + escapeHtml(row.date) + '</td>' +
+                    '<td>' + escapeHtml(row.dayOfWeek) + '</td>' +
+                    '<td>' + escapeHtml(row.weekNum) + '</td>' +
+                    '<td>' + escapeHtml(row.jieci) + '</td>' +
+                    '<td>' + escapeHtml(row.banji) + '</td>' +
+                    '<td>' + escapeHtml(row.teacher) + '</td>' +
+                    '<td>' + escapeHtml(row.xunkeTeacher) + '</td>' +
+                    '<td style="color:#dc2626;font-weight:600;">' + escapeHtml(row.remark) + '</td>' +
+                    '<td>' + escapeHtml(row.remarkDetail || '') + '</td>' +
+                    '<td><span class="source-tag">' + escapeHtml(row._source || '') + '</span></td>' +
+                    '</tr>';
+            });
+            html += '</tbody></table>';
+            wrap.innerHTML = html;
+        }
+
+        // ---------- 导出 ----------
+        function exportMerged() {
+            if (mergedData.length === 0) {
+                showToast('没有数据可导出', 'warning');
+                return;
+            }
+
+            if (typeof XLSX === 'undefined') {
+                showToast('XLSX 库未加载，无法导出', 'error');
+                return;
+            }
+
+            var btn = document.getElementById('exportBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+
+            try {
+                var wb = XLSX.utils.book_new();
+
+                var detailHeader = ['序号', '日期', '星期', '周数', '节次', '班级', '授课教师', '巡课教师', '巡课情况', '备注', '巡课时间', '数据来源'];
+                var detailRows = [detailHeader];
+                mergedData.forEach(function(row, idx) {
+                    detailRows.push([
+                        idx + 1,
+                        row.date || '',
+                        row.dayOfWeek || '',
+                        row.weekNum || '',
+                        row.jieci || '',
+                        row.banji || '',
+                        row.teacher || '',
+                        row.xunkeTeacher || '',
+                        row.remark || '正常',
+                        row.remarkDetail || '',
+                        row.recordTime || '',
+                        row._source || ''
+                    ]);
+                });
+                var ws1 = XLSX.utils.aoa_to_sheet(detailRows);
+                ws1['!cols'] = [
+                    { wch: 6 }, { wch: 12 }, { wch: 8 }, { wch: 6 },
+                    { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+                    { wch: 10 }, { wch: 20 }, { wch: 20 }, { wch: 18 }
+                ];
+                XLSX.utils.book_append_sheet(wb, ws1, '合并明细');
+
+                var statAll = {};
+                mergedData.forEach(function(item) {
+                    var t = item.teacher || '未知教师';
+                    if (!statAll[t]) {
+                        statAll[t] = Object.fromEntries(ALL_JIECI.map(function(j) { return [j, 0]; }));
+                    }
+                    var j = item.jieci || '未分类';
+                    if (ALL_JIECI.indexOf(j) !== -1) {
+                        statAll[t][j] = (statAll[t][j] || 0) + 1;
+                    }
+                });
+                var sumHeader = ['教师姓名'];
+                ALL_JIECI.forEach(function(j) { sumHeader.push(j + '(课时)'); });
+                sumHeader.push('总课时');
+                var sumRows = [sumHeader];
+                Object.keys(statAll).sort().forEach(function(t) {
+                    var row = [t];
+                    var total = 0;
+                    ALL_JIECI.forEach(function(j) {
+                        var n = statAll[t][j] || 0;
+                        total += n;
+                        row.push(n);
+                    });
+                    row.push(total);
+                    sumRows.push(row);
+                });
+                var ws2 = XLSX.utils.aoa_to_sheet(sumRows);
+                ws2['!cols'] = [{ wch: 14 }].concat(ALL_JIECI.map(function() { return { wch: 10 }; })).concat({ wch: 10 });
+                XLSX.utils.book_append_sheet(wb, ws2, '教师总汇总');
+
+                var weeksSet = new Set();
+                mergedData.forEach(function(item) {
+                    if (item.weekNum) weeksSet.add(String(item.weekNum));
+                });
+                var sortedWeeks = Array.from(weeksSet).sort(function(a, b) {
+                    var na = parseInt(a),
+                        nb = parseInt(b);
+                    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                    return String(a).localeCompare(String(b));
+                });
+                sortedWeeks.forEach(function(week) {
+                    var weekData = mergedData.filter(function(item) { return String(item.weekNum) === week; });
+                    if (weekData.length === 0) return;
+                    var statWeek = {};
+                    weekData.forEach(function(item) {
+                        var t = item.teacher || '未知教师';
+                        if (!statWeek[t]) {
+                            statWeek[t] = Object.fromEntries(ALL_JIECI.map(function(j) { return [j, 0]; }));
+                        }
+                        var j = item.jieci || '未分类';
+                        if (ALL_JIECI.indexOf(j) !== -1) {
+                            statWeek[t][j] = (statWeek[t][j] || 0) + 1;
+                        }
+                    });
+                    var wkHeader = ['教师姓名'];
+                    ALL_JIECI.forEach(function(j) { wkHeader.push(j + '(课时)'); });
+                    wkHeader.push('总课时');
+                    var wkRows = [wkHeader];
+                    Object.keys(statWeek).sort().forEach(function(t) {
+                        var row = [t];
+                        var total = 0;
+                        ALL_JIECI.forEach(function(j) {
+                            var n = statWeek[t][j] || 0;
+                            total += n;
+                            row.push(n);
+                        });
+                        row.push(total);
+                        wkRows.push(row);
+                    });
+                    var wsWeek = XLSX.utils.aoa_to_sheet(wkRows);
+                    wsWeek['!cols'] = [{ wch: 14 }].concat(ALL_JIECI.map(function() { return { wch: 10 }; })).concat({ wch: 10 });
+                    var sheetName = '第' + week + '周';
+                    XLSX.utils.book_append_sheet(wb, wsWeek, sheetName);
+                });
+
+                var abnormal = mergedData.filter(function(i) { return i.remark && i.remark !== '正常'; });
+                var abHeader = ['日期', '星期', '周数', '节次', '班级', '授课教师', '巡课教师', '异常情况', '备注', '数据来源'];
+                var abRows = [abHeader];
+                abnormal.forEach(function(row) {
+                    abRows.push([
+                        row.date || '',
+                        row.dayOfWeek || '',
+                        row.weekNum || '',
+                        row.jieci || '',
+                        row.banji || '',
+                        row.teacher || '',
+                        row.xunkeTeacher || '',
+                        row.remark || '',
+                        row.remarkDetail || '',
+                        row._source || ''
+                    ]);
+                });
+                var wsAb = XLSX.utils.aoa_to_sheet(abRows);
+                wsAb['!cols'] = [
+                    { wch: 12 }, { wch: 8 }, { wch: 6 }, { wch: 14 },
+                    { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+                    { wch: 20 }, { wch: 18 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsAb, '异常汇总');
+
+                var now = new Date();
+                var timeStr = now.getFullYear() +
+                    String(now.getMonth() + 1).padStart(2, '0') +
+                    String(now.getDate()).padStart(2, '0') + '_' +
+                    String(now.getHours()).padStart(2, '0') +
+                    String(now.getMinutes()).padStart(2, '0');
+                var fileName = '巡课数据_合并_' + timeStr + '.xlsx';
+
+                var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                var blob = new Blob([wbout], { type: 'application/octet-stream' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+
+                showToast('✅ 导出成功！共 ' + mergedData.length + ' 条记录，' + sortedWeeks.length + ' 个周汇总', 'success', 3000);
+                btn.disabled = false;
+                btn.textContent = '📥 导出合并 Excel';
+
+            } catch (e) {
+                console.error('导出失败:', e);
+                showToast('导出失败: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '📥 导出合并 Excel';
+            }
+        }
+
+        // ---------- 初始化 ----------
+        function init() {
+            var fileInput = document.getElementById('fileInput');
+            var uploadBtn = document.getElementById('uploadBtn');
+            var mergeBtn = document.getElementById('mergeBtn');
+            var clearFilesBtn = document.getElementById('clearFilesBtn');
+            var manualSaveBtn = document.getElementById('manualSaveBtn');
+            var clearCacheBtn = document.getElementById('clearCacheBtn');
+            var exportBtn = document.getElementById('exportBtn');
+
+            uploadBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    handleFiles(this.files);
+                    this.value = '';
+                }
+            });
+
+            mergeBtn.addEventListener('click', function() {
+                if (uploadedFiles.length === 0) {
+                    showToast('请先上传文件', 'warning');
+                    return;
+                }
+                showToast('数据已合并，如需重新合并请清空数据后重新上传', 'info');
+            });
+
+            clearFilesBtn.addEventListener('click', function() {
+                if (uploadedFiles.length === 0) return;
+                if (!confirm('确定清空已上传的文件列表吗？数据不会被删除。')) return;
+                uploadedFiles = [];
+                updateFileList();
+                showToast('已清空文件列表', 'info');
+            });
+
+            manualSaveBtn.addEventListener('click', function() {
+                if (mergedData.length === 0) {
+                    showToast('没有数据可保存', 'warning');
+                    return;
+                }
+                saveCache();
+            });
+
+            clearCacheBtn.addEventListener('click', function() {
+                if (!confirm('确定清空缓存吗？这将删除所有已保存的数据，但不影响当前页面显示的数据。')) return;
+                clearCache();
+                showToast('缓存已清空，当前数据仍在内存中', 'info');
+            });
+
+            exportBtn.addEventListener('click', exportMerged);
+
+            updateCacheInfo();
+            checkAndPromptRestore();
+
+            window.addEventListener('beforeunload', function() {
+                if (mergedData && mergedData.length > 0) {
+                    saveCache();
+                }
+            });
+
+            window.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    if (mergedData && mergedData.length > 0) {
+                        saveCache();
+                    }
+                }
+            });
+
+            hideResults();
+            updateFileList();
+            showToast('📌 点击"选择文件"上传 Excel，自动合并去重并缓存', 'info', 3000);
+
+            if (typeof XLSX === 'undefined') {
+                showToast('⚠️ XLSX 库未加载，请检查网络连接', 'error', 5000);
+            }
+        }
+
+        // ---------- 检查缓存并提示恢复 ----------
+        function checkAndPromptRestore() {
+            var cached = loadCache();
+            if (!cached || !cached.data || cached.data.length === 0) {
+                return;
+            }
+
+            if (mergedData && mergedData.length > 0) {
+                var cacheTime = cached.meta ? new Date(cached.meta.timestamp) : null;
+                if (cacheTime) {
+                    var lastRecordTime = null;
+                    if (mergedData.length > 0) {
+                        var last = mergedData[0];
+                        lastRecordTime = last.updatedAt ? new Date(last.updatedAt) : null;
+                    }
+                    if (lastRecordTime && lastRecordTime > cacheTime) {
+                        return;
+                    }
+                }
+            }
+
+            var modal = document.getElementById('restoreModal');
+            var info = document.getElementById('restoreModalInfo');
+            var count = cached.data.length;
+            var timeStr = cached.meta ? new Date(cached.meta.timestamp).toLocaleString('zh-CN') : '未知时间';
+            info.innerHTML =
+                '<strong>缓存记录数：</strong>' + count + ' 条<br/>' +
+                '<strong>缓存时间：</strong>' + escapeHtml(timeStr) + '<br/>' +
+                '<strong>说明：</strong>恢复后将与当前数据合并（自动去重）';
+
+            modal.classList.add('show');
+
+            document.getElementById('restoreConfirmBtn').onclick = function() {
+                modal.classList.remove('show');
+                restoreCacheData(cached.data);
+            };
+            document.getElementById('restoreCancelBtn').onclick = function() {
+                modal.classList.remove('show');
+                showToast('已忽略缓存', 'info', 1500);
+            };
+            modal.onclick = function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                    showToast('已忽略缓存', 'info', 1500);
+                }
+            };
+        }
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            init();
+        } else {
+            document.addEventListener('DOMContentLoaded', init);
+        }
+    </script>
+
+</body>
+</html>
